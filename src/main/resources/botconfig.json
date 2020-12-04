@@ -1,0 +1,5 @@
+{
+	"token": "DISCORD_TOKEN",
+	"loadcommands": true,
+	"owner": "OWNER_ID",
+}
