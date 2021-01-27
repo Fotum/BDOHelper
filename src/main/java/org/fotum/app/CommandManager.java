@@ -9,17 +9,15 @@ import java.util.regex.Pattern;
 
 import org.fotum.app.commands.siege.AddPlayerCommand;
 import org.fotum.app.commands.siege.AddSiegeCommand;
-import org.fotum.app.commands.siege.GetRegisteredPlayers;
 import org.fotum.app.commands.siege.RemoveListeningChannel;
 import org.fotum.app.commands.siege.RemoveManagingRole;
 import org.fotum.app.commands.siege.RemovePlayerCommand;
 import org.fotum.app.commands.siege.RemoveSiegeCommand;
-import org.fotum.app.commands.siege.SetAnnouncementDelay;
-import org.fotum.app.commands.siege.SetAnnouncementMessage;
+import org.fotum.app.commands.siege.SetDescriptionMessage;
 import org.fotum.app.commands.siege.SetListeningChannel;
 import org.fotum.app.commands.siege.SetManagingRole;
 import org.fotum.app.commands.siege.SetPrefixRoles;
-import org.fotum.app.commands.siege.SetRepeatMessage;
+import org.fotum.app.commands.siege.SetTitleMessage;
 import org.fotum.app.commands.siege.SiegeHelp;
 import org.fotum.app.objects.ICommand;
 
@@ -37,11 +35,9 @@ public class CommandManager
 		this.addCommand(new RemoveListeningChannel());
 		this.addCommand(new SetManagingRole());
 		this.addCommand(new RemoveManagingRole());
-		this.addCommand(new SetAnnouncementDelay());
-		this.addCommand(new SetAnnouncementMessage());
+		this.addCommand(new SetTitleMessage());
 		this.addCommand(new SetPrefixRoles());
-		this.addCommand(new SetRepeatMessage());
-		this.addCommand(new GetRegisteredPlayers());
+		this.addCommand(new SetDescriptionMessage());
 		
 		this.addCommand(new AddPlayerCommand());
 		this.addCommand(new RemovePlayerCommand());

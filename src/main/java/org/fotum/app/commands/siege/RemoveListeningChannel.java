@@ -44,9 +44,8 @@ public class RemoveListeningChannel implements ICommand
 		{
 			event.getMessage().delete().queue();
 		}
-		
-		if (SiegeManager.getInstance().getSiegeInstance(guildId) != null)
-			SiegeManager.getInstance().getSiegeInstance(guildId).unschedule();
+
+		SiegeManager.getInstance().removeSiegeInstance(guildId);
 		SiegeManager.getInstance().removeListeningChannel(guildId);
 
 		this.sendMessageToChannel(channel, "Listening channel successfully removed");

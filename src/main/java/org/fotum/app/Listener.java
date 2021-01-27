@@ -1,9 +1,8 @@
 package org.fotum.app;
 
 import org.fotum.app.objects.BotUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.ChannelType;
 import net.dv8tion.jda.api.entities.Guild;
@@ -14,10 +13,10 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
+@Slf4j
 class Listener extends ListenerAdapter
 {
 	private final CommandManager manager;
-	private final Logger logger = LoggerFactory.getLogger(Listener.class);
 	
 	Listener(CommandManager manager)
 	{
@@ -27,11 +26,11 @@ class Listener extends ListenerAdapter
 	@Override
 	public void onReady(ReadyEvent event)
 	{
-		logger.info(String.format("Logged in as %#s", event.getJDA().getSelfUser()));
+		log.info(String.format("Logged in as %#s", event.getJDA().getSelfUser()));
 		
-		logger.info("Loading configs");
+		log.info("Loading configs");
 		BotUtils.loadConfigs(event.getJDA());
-		logger.info("Configs successfully loaded");
+		log.info("Configs successfully loaded");
 	}
 	
 	@Override
@@ -45,11 +44,11 @@ class Listener extends ListenerAdapter
 			Guild guild = event.getGuild();
 			TextChannel textChannel = event.getTextChannel();
 			
-			logger.info(String.format("(%s) [%s] <%#s>: %s", guild.getName(), textChannel.getName(), author, content));
+			log.info(String.format("(%s) [%s] <%#s>: %s", guild.getName(), textChannel.getName(), author, content));
 		}
 		else if (event.isFromType(ChannelType.PRIVATE))
 		{
-			logger.info(String.format("[PRIV] <%#s>: %s", author, content));
+			log.info(String.format("[PRIV] <%#s>: %s", author, content));
 		}
 	}
 	
@@ -80,7 +79,12 @@ class Listener extends ListenerAdapter
 	
 	private void shutdown(JDA jda)
 	{
+		log.info("Manual shutdown initiated...");
+		log.info("Shutting down siege instances");
+		BotUtils.shutdownInstances();
+		log.info("Saving configs");
 		BotUtils.saveConfigs();
+		log.info("Shutting down JDA");
 		jda.shutdown();
 		System.exit(0);
 	}

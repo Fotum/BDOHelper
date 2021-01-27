@@ -1,7 +1,6 @@
 package org.fotum.app.features.siege;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.Arrays;
@@ -10,13 +9,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.fotum.app.MainApp;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.Synchronized;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -24,163 +24,154 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.exceptions.ErrorHandler;
+import net.dv8tion.jda.api.requests.ErrorResponse;
 
-public class SiegeInstance implements Runnable
+public class SiegeInstance extends Thread
 {
-	private final ScheduledThreadPoolExecutor scheduler;
+	private boolean isRunning = false;
+	private final SiegeManager manager = SiegeManager.getInstance();
+	private Long guildId;
 
+	@Getter
 	private LocalDate startDt;
 	private int playersMax;
-	private int slotsRemain;
 	private String zone;
 
+	@Setter
 	private String titleMessage;
+	@Setter
 	private String descriptionMessage;
-	private int announcerDelay;
-	private int announcerOffset;
+	private Long announcerDelay;
 
 	private Set<Long> registredPlayers;
 	private Set<Long> latePlayers;
-	private Set<Long> prefixRoles;
-	private ScheduledFuture<?> schedFuture = null;
 
 	private TextChannel channel;
 	private Message messageToEdit;
 	private Message messageMention;
 	private EmbedBuilder eBuilder;
-
-	public SiegeInstance()
+	
+	public SiegeInstance(Long guildId, TextChannel channel, LocalDate startDt, String zone, int playersMax)
 	{
-		this.announcerOffset = 0;
-		this.announcerDelay = 5;
-		this.titleMessage = "Осада в %s (%s) на канале - %s 1";
+		this.guildId = guildId;
+		this.channel = channel;
+		this.startDt = startDt;
+		this.zone = zone;
+		this.playersMax = playersMax;
+		
+		this.announcerDelay = 5L;
+		this.titleMessage = "Осада %s (%s) на канале - %s 1";
 		this.descriptionMessage = "Взять с собой Топор трины +18, Карки и Гиганты. Оставляйте заявки на осаду: \"+\"";
 		this.messageToEdit = null;
 		this.messageMention = null;
 
 		this.registredPlayers = new LinkedHashSet<Long>();
 		this.latePlayers = new LinkedHashSet<Long>();
-		this.prefixRoles = new LinkedHashSet<Long>();
-
-		this.scheduler = new ScheduledThreadPoolExecutor(1);
-		this.scheduler.setRemoveOnCancelPolicy(true);
-
 		this.eBuilder = new EmbedBuilder().setColor(MainApp.getRandomColor());
 	}
-
+	
+	@Override
 	public void run()
 	{
+		this.isRunning = true;
 		// HEAP
-		if (this.channel.getGuild().getIdLong() == 251095848568619008L && this.messageMention == null)
+		if (this.guildId == 251095848568619008L)
 		{
 			this.channel.sendMessage("<@&607655302871121931>").queue(
 				(message) -> this.messageMention = message
 			);
 		}
 
-		this.slotsRemain = playersMax - registredPlayers.size();
-		String dayOfWeek = this.startDt.getDayOfWeek().getDisplayName(TextStyle.FULL, new Locale("ru"));
-		String dateStr = this.startDt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
-		String announce = String.format(this.titleMessage, dateStr, dayOfWeek, this.zone);
-
-		this.eBuilder.setTitle(announce);
-		this.eBuilder.setDescription(this.descriptionMessage);
-		this.eBuilder.clearFields();
-		this.eBuilder.addField("Плюсов на осаду", String.valueOf(this.registredPlayers.size()), true);
-		this.eBuilder.addField("Осталось слотов", String.valueOf(this.slotsRemain), true);
-		this.eBuilder.addBlankField(true);
-
-		for (Long roleId : this.prefixRoles)
+		while (isRunning)
 		{
-			Role prefixRole = this.channel.getGuild().getRoleById(roleId);
-			String fieldText = this.convertPlayersSetByRole(this.registredPlayers, prefixRole);
-			if (!fieldText.isEmpty())
-				this.addFieldToEmbed(this.eBuilder, prefixRole.getName(), fieldText, true);
-		}
+			int slotsRemain = playersMax - registredPlayers.size();
+			String dayOfWeek = this.startDt.getDayOfWeek().getDisplayName(TextStyle.FULL, new Locale("ru"));
+			String dateStr = this.startDt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+			String announce = String.format(this.titleMessage, dateStr, dayOfWeek, this.zone);
 
-		String noRoleList = this.convertPlayersWithoutRole(this.registredPlayers);
-		if (!noRoleList.isEmpty())
-			this.addFieldToEmbed(this.eBuilder, "Без роли", noRoleList, true);
+			this.eBuilder.setTitle(announce);
+			this.eBuilder.setDescription(this.descriptionMessage);
+			this.eBuilder.clearFields();
+			this.eBuilder.addField("Плюсов на осаду", String.valueOf(this.registredPlayers.size()), true);
+			this.eBuilder.addField("Осталось слотов", String.valueOf(slotsRemain), true);
+			this.eBuilder.addBlankField(true);
 
-		String lateList = this.latePlayers.stream()
-							.map(
-								(memberId) -> String.format("%s", this.channel.getGuild().getMemberById(memberId).getAsMention())
-							).collect(Collectors.joining("\n"));
+			for (Long roleId : manager.getPrefixRolesById(this.guildId))
+			{
+				Role prefixRole = this.channel.getGuild().getRoleById(roleId);
+				String fieldText = this.convertPlayersSetByRole(this.registredPlayers, prefixRole);
+				if (!fieldText.isEmpty())
+					this.addFieldToEmbed(this.eBuilder, prefixRole.getName(), fieldText, true);
+			}
 
-		if (!lateList.isEmpty())
-			this.addFieldToEmbed(this.eBuilder, "Опоздашки", lateList, true);
+			String noRoleList = this.convertPlayersWithoutRole(this.registredPlayers);
+			if (!noRoleList.isEmpty())
+				this.addFieldToEmbed(this.eBuilder, "Без роли", noRoleList, true);
 
-		if (this.messageToEdit != null)
-		{
-			this.messageToEdit.editMessage(eBuilder.build()).queue();
-		}
-		else
-		{
-			this.channel.sendMessage(eBuilder.build()).queue(
-				(message) -> this.messageToEdit = message
-			);
-		}
-	}
+			String lateList = this.latePlayers.stream()
+								.map(
+									(memberId) -> String.format("%s", this.channel.getGuild().getMemberById(memberId).getAsMention())
+								).collect(Collectors.joining("\n"));
 
-	public void schedule()
-	{
-		if (LocalDateTime.now().isAfter(this.startDt.atTime(19, 50)))
-			return;
+			if (!lateList.isEmpty())
+				this.addFieldToEmbed(this.eBuilder, "Опоздашки", lateList, true);
 
-		if (this.schedFuture != null && !this.schedFuture.isDone())
-			return;
-
-		if (this.messageToEdit != null)
-		{
-			TextChannel prevChannel = this.messageToEdit.getTextChannel();
-			if (prevChannel != null && prevChannel.getIdLong() != this.channel.getIdLong())
-				this.messageToEdit.delete().complete();
-		}
-
-		try
-		{
-			this.schedFuture = scheduler.scheduleAtFixedRate(this, this.announcerOffset, this.announcerDelay, TimeUnit.SECONDS);
-		}
-		catch (Exception ex)
-		{
-			ex.printStackTrace();
+			if (this.messageToEdit != null)
+			{
+				this.messageToEdit
+					.editMessage(eBuilder.build())
+					.queue(null, new ErrorHandler()
+									.handle(ErrorResponse.UNKNOWN_MESSAGE, (ex) -> this.messageToEdit = null)
+					);
+			}
+			else
+			{
+				this.channel.sendMessage(eBuilder.build()).queue(
+					(message) -> this.messageToEdit = message
+				);
+			}
+			
+			try
+			{
+				TimeUnit.SECONDS.sleep(announcerDelay);
+			}
+			catch (InterruptedException ex)
+			{
+				ex.printStackTrace();
+				this.stopInstance();
+			}
 		}
 	}
-
-	public void unschedule()
+	
+	@Synchronized
+	public boolean isRunning()
 	{
-		if (this.schedFuture != null && !this.schedFuture.isDone())
-			this.schedFuture.cancel(false);
+		return this.isRunning;
+	}
+	
+	@Synchronized
+	public void stopInstance()
+	{
+		if (!this.isRunning)
+			return;
+		
+		this.isRunning = false;
 		
 		if (this.messageMention != null)
-			this.messageMention.delete().complete();
+			this.messageMention.delete().queue(null, new ErrorHandler()
+															.handle(ErrorResponse.UNKNOWN_MESSAGE, (ex) -> ex.printStackTrace())
+			);
+		
+		if (this.messageToEdit != null)
+			this.messageToEdit.delete().queue(null, new ErrorHandler()
+															.handle(ErrorResponse.UNKNOWN_MESSAGE, (ex) -> ex.printStackTrace())
+			);
 	}
 
-	public void reschedule()
-	{	
-		this.unschedule();
-		this.schedule();
-	}
-
-	public void reinit()
-	{
-		this.unschedule();
-
-		this.startDt = null;
-		this.zone = null;
-		this.playersMax = 0;
-		this.channel = null;
-
-		this.registredPlayers.clear();
-		this.latePlayers.clear();
-		this.schedFuture = null;
-	}
-
+	@Synchronized
 	public void addPlayer(Long discordId)
 	{
-		if (this.schedFuture != null && this.schedFuture.isDone())
-			return;
-		
 		if (this.registredPlayers.contains(discordId) || this.latePlayers.contains(discordId))
 			return;
 		
@@ -190,11 +181,9 @@ public class SiegeInstance implements Runnable
 			this.latePlayers.add(discordId);
 	}
 
+	@Synchronized
 	public void removePlayer(Long discordId)
 	{
-		if (this.schedFuture != null && this.schedFuture.isDone())
-			return;
-		
 		if (this.registredPlayers.contains(discordId))
 		{
 			this.registredPlayers.remove(discordId);
@@ -211,148 +200,6 @@ public class SiegeInstance implements Runnable
 		}
 	}
 
-	public LocalDate getStartDt()
-	{
-		return startDt;
-	}
-
-	public void setStartDt(LocalDate startDt)
-	{
-		this.startDt = startDt;
-	}
-
-	public int getPlayersMax()
-	{
-		return playersMax;
-	}
-
-	public void setPlayersMax(int playersMax)
-	{
-		this.playersMax = playersMax;
-	}
-
-	public int getSlotsRemain()
-	{
-		return slotsRemain;
-	}
-
-	public void setSlotsRemain(int slotsRemain)
-	{
-		this.slotsRemain = slotsRemain;
-	}
-
-	public String getZone()
-	{
-		return zone;
-	}
-
-	public void setZone(String zone)
-	{
-		this.zone = zone;
-	}
-
-	public String getTitleMessage()
-	{
-		return titleMessage;
-	}
-
-	public void setTitleMessage(String titleMessage)
-	{
-		this.titleMessage = titleMessage;
-	}
-
-	public String getDescriptionMessage()
-	{
-		return descriptionMessage;
-	}
-
-	public void setDescriptionMessage(String descriptionMessage)
-	{
-		this.descriptionMessage = descriptionMessage;
-	}
-
-	public int getAnnouncerDelay()
-	{
-		return announcerDelay;
-	}
-
-	public void setAnnouncerDelay(int announcerDelay)
-	{
-		this.announcerDelay = announcerDelay;
-	}
-
-	public int getAnnouncerOffset()
-	{
-		return announcerOffset;
-	}
-
-	public void setAnnouncerOffset(int announcerOffset)
-	{
-		this.announcerOffset = announcerOffset;
-	}
-
-	public Set<Long> getRegistredPlayers()
-	{
-		return registredPlayers;
-	}
-
-	public void setRegistredPlayers(Set<Long> registredPlayers)
-	{
-		this.registredPlayers = registredPlayers;
-	}
-
-	public Set<Long> getLatePlayers()
-	{
-		return latePlayers;
-	}
-
-	public void setLatePlayers(Set<Long> latePlayers)
-	{
-		this.latePlayers = latePlayers;
-	}
-
-	public TextChannel getChannel()
-	{
-		return channel;
-	}
-
-	public void setChannel(TextChannel channel)
-	{
-		this.channel = channel;
-	}
-
-	public Message getMessageToEdit()
-	{
-		return messageToEdit;
-	}
-
-	public void setMessageToEdit(Message messageToEdit)
-	{
-		if (this.messageToEdit != null)
-		{
-			try
-			{
-				this.messageToEdit.delete().complete();
-			}
-			catch (Exception ex)
-			{
-				ex.printStackTrace();
-			}
-		}
-		
-		this.messageToEdit = messageToEdit;
-	}
-
-	public Set<Long> getPrefixRoles()
-	{
-		return prefixRoles;
-	}
-
-	public void setPrefixRoles(Set<Long> prefixRoles)
-	{
-		this.prefixRoles = prefixRoles;
-	}
-	
 	private void addFieldToEmbed(EmbedBuilder builder, String fieldNm, String fieldVal, boolean inline)
 	{
 		if (fieldVal.length() > MessageEmbed.VALUE_MAX_LENGTH)
@@ -402,7 +249,8 @@ public class SiegeInstance implements Runnable
 	private String convertPlayersWithoutRole(Set<Long> playersSet)
 	{
 		Guild guild = this.channel.getGuild();
-		List<Role> prefixes = this.prefixRoles.stream()
+		List<Role> prefixes = manager.getPrefixRolesById(this.guildId)
+								.stream()
 								.map((roleId) -> guild.getRoleById(roleId))
 								.collect(Collectors.toList());
 		List<Member> members = playersSet.stream()

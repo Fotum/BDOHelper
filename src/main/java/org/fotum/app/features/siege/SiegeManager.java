@@ -1,17 +1,27 @@
 package org.fotum.app.features.siege;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
+
+import lombok.Getter;
+import lombok.Setter;
 
 public class SiegeManager
 {
 	private static SiegeManager INSTANCE = null;
 	private SiegeManagerDaemon schedDaemon;
 	
+	@Getter @Setter
 	private Map<Long, Long> listeningChannels = new HashMap<Long, Long>();
+	@Getter @Setter
 	private Map<Long, Long> managingRoles = new HashMap<Long, Long>();
+	@Getter
 	private Map<Long, SiegeInstance> siegeInstances = new HashMap<Long, SiegeInstance>();
-	
+	@Getter @Setter
+	private Map<Long, Set<Long>> prefixRoles = new HashMap<Long, Set<Long>>();
+
 	private SiegeManager()
 	{
 		schedDaemon = new SiegeManagerDaemon(this);
@@ -19,15 +29,13 @@ public class SiegeManager
 		schedDaemon.start();
 	}
 
-	public SiegeInstance addSiegeInstance(Long guildId)
+	public void addSiegeInstance(Long guildId, SiegeInstance siegeInst)
 	{
-		if (this.siegeInstances.containsKey(guildId))
-			return this.siegeInstances.get(guildId);
-		
-		SiegeInstance siegeInstance = new SiegeInstance();
-		this.siegeInstances.put(guildId, siegeInstance);
-		
-		return siegeInstance;
+		if (!this.siegeInstances.containsKey(guildId))
+		{
+			this.siegeInstances.put(guildId, siegeInst);
+			siegeInst.start();
+		}
 	}
 
 	public SiegeInstance getSiegeInstance(Long guildId)
@@ -38,16 +46,16 @@ public class SiegeManager
 		
 		return result;
 	}
-	
+
 	public void removeSiegeInstance(Long guildId)
 	{
-		if (!this.siegeInstances.containsKey(guildId))
-			return;
-
-		this.siegeInstances.get(guildId).unschedule();
-		this.siegeInstances.remove(guildId);
+		if (this.siegeInstances.containsKey(guildId))
+		{
+			this.siegeInstances.get(guildId).stopInstance();
+			this.siegeInstances.remove(guildId);
+		}
 	}
-	
+
 	public Long getListeningChannel(Long guildId)
 	{
 		Long result = 0L;
@@ -56,18 +64,18 @@ public class SiegeManager
 		
 		return result;
 	}
-	
+
 	public void addListeningChannel(Long guildId, Long channelId)
 	{
 		this.listeningChannels.put(guildId, channelId);
 	}
-	
+
 	public void removeListeningChannel(Long guildId)
 	{
 		if (this.listeningChannels.containsKey(guildId))
 			this.listeningChannels.remove(guildId);
 	}
-	
+
 	public Long getManagingRole(Long guildId)
 	{
 		Long result = 0L;
@@ -76,16 +84,32 @@ public class SiegeManager
 		
 		return result;
 	}
-	
+
 	public void addManagingRole(Long guildId, Long roleId)
 	{
 		this.managingRoles.put(guildId, roleId);
 	}
-	
+
 	public void removeManagingRole(Long guildId)
 	{
 		if (this.managingRoles.containsKey(guildId))
 			this.managingRoles.remove(guildId);
+	}
+	
+	public void addPrefixRoles(Long guildId, Set<Long> roleIds)
+	{
+		if (this.prefixRoles.containsKey(guildId))
+			this.prefixRoles.remove(guildId);
+
+		this.prefixRoles.put(guildId, roleIds);
+	}
+	
+	public Set<Long> getPrefixRolesById(Long guildId)
+	{
+		if (this.prefixRoles.containsKey(guildId))
+			return this.prefixRoles.get(guildId);
+		
+		return new LinkedHashSet<Long>();
 	}
 	
 	public void startDaemon()
@@ -103,36 +127,6 @@ public class SiegeManager
 			this.schedDaemon.stopDaemon();
 		
 		this.schedDaemon = null;
-	}
-	
-	public Map<Long, SiegeInstance> getSiegeInstances()
-	{
-		return this.siegeInstances;
-	}
-	
-	public void setSiegeInstances(Map<Long, SiegeInstance> instances)
-	{
-		this.siegeInstances = instances;
-	}
-	
-	public Map<Long, Long> getListeningChannels()
-	{
-		return this.listeningChannels;
-	}
-	
-	public void setListeningChannels(Map<Long, Long> listChans)
-	{
-		this.listeningChannels = listChans;
-	}
-	
-	public Map<Long, Long> getManagingRoles()
-	{
-		return this.managingRoles;
-	}
-	
-	public void setManagingRoles(Map<Long, Long> managRoles)
-	{
-		this.managingRoles = managRoles;
 	}
 
 	public static SiegeManager getInstance()

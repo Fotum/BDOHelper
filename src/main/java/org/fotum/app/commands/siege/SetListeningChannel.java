@@ -60,9 +60,10 @@ public class SetListeningChannel implements ICommand
 			event.getMessage().delete().queue();
 		}
 
+
+		SiegeManager.getInstance().removeSiegeInstance(guildId);
 		SiegeManager.getInstance().removeListeningChannel(guildId);
 		SiegeManager.getInstance().addListeningChannel(guildId, channelId);
-		SiegeManager.getInstance().getSiegeInstance(guildId).unschedule();
 
 		this.sendMessageToChannel(channel, "Listening channel successfully set");
 	}

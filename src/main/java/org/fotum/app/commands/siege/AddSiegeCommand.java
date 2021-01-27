@@ -24,6 +24,7 @@ public class AddSiegeCommand implements ICommand
 	static
 	{
 		zones = new HashMap<String, String>();
+		zones.put("tbd", "Неизвестно");
 		zones.put("bal", "Баленос");
 		zones.put("val", "Валенсия");
 		zones.put("ser", "Серендия");
@@ -34,7 +35,6 @@ public class AddSiegeCommand implements ICommand
 	@Override
 	public void handle(List<String> args, GuildMessageReceivedEvent event)
 	{
-		SiegeManager manager = SiegeManager.getInstance();
 		TextChannel channel = event.getChannel();
 		Guild guild = event.getGuild();
 
@@ -117,13 +117,9 @@ public class AddSiegeCommand implements ICommand
 			event.getMessage().delete().queue();
 		}
 
-		SiegeInstance siegeInst = manager.addSiegeInstance(guild.getIdLong());
-		siegeInst.reinit();
-		siegeInst.setChannel(guild.getTextChannelById(listeningChannelId));
-		siegeInst.setStartDt(startDt);
-		siegeInst.setZone(zone);
-		siegeInst.setPlayersMax(playersAmount);
-		siegeInst.schedule();
+		SiegeInstance siegeInst = new SiegeInstance(guild.getIdLong(), guild.getTextChannelById(listeningChannelId), startDt, zone, playersAmount);
+		SiegeManager.getInstance().removeSiegeInstance(guild.getIdLong());
+		SiegeManager.getInstance().addSiegeInstance(guild.getIdLong(), siegeInst);
 	}
 
 	@Override

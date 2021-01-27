@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.fotum.app.Constants;
-import org.fotum.app.features.siege.SiegeInstance;
 import org.fotum.app.features.siege.SiegeManager;
 import org.fotum.app.objects.ICommand;
 
@@ -50,9 +49,7 @@ public class RemoveSiegeCommand implements ICommand
 			event.getMessage().delete().queue();
 		}
 
-		SiegeInstance inst = SiegeManager.getInstance().getSiegeInstance(event.getGuild().getIdLong());
-		if (inst != null)
-			inst.unschedule();
+		SiegeManager.getInstance().removeSiegeInstance(channel.getGuild().getIdLong());
 
 		channel.sendMessage("Siege successfully deleted").queue(
 				(message) -> message.delete().queueAfter(5L, TimeUnit.SECONDS)

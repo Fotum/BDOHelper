@@ -31,11 +31,11 @@ public class SiegeManagerDaemon extends Thread
 			{
 				LocalDateTime dtNow = LocalDateTime.now();
 				LocalDate instDt = inst.getStartDt();
-				LocalDateTime unschedAt = instDt.atTime(21, 50);
+				LocalDateTime unschedAt = instDt.atTime(20, 00);
 				
 				if (dtNow.isAfter(unschedAt))
 				{
-					inst.unschedule();
+					inst.stopInstance();
 				}
 			}
 			

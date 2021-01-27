@@ -38,7 +38,7 @@ public class MainApp
 		Constants.initConstants();
 
 		DefaultShardManager shardManager = new DefaultShardManager(config.getString("token"));
-		shardManager.setActivity(Activity.playing("with other bots"));
+		shardManager.setActivity(Activity.playing("Black Desert Online"));
 		shardManager.setStatus(OnlineStatus.ONLINE);
 		shardManager.addEventListener(listener);
 		shardManager.start(0);

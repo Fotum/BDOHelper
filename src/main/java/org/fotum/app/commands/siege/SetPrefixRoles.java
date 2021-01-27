@@ -1,18 +1,17 @@
 package org.fotum.app.commands.siege;
 
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.fotum.app.Constants;
-import org.fotum.app.features.siege.SiegeInstance;
 import org.fotum.app.features.siege.SiegeManager;
 import org.fotum.app.objects.ICommand;
 
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 
@@ -22,6 +21,7 @@ public class SetPrefixRoles implements ICommand
 	@Override
 	public void handle(List<String> args, GuildMessageReceivedEvent event)
 	{
+		Guild guild = event.getGuild();
 		TextChannel channel = event.getChannel();
 		Member selfMember = event.getGuild().getSelfMember();
 		
@@ -50,32 +50,34 @@ public class SetPrefixRoles implements ICommand
 			return;
 		}
 		
-		List<Role> mentionedRoles = event.getMessage().getMentionedRoles();
-		if (mentionedRoles.isEmpty())
-		{
-			this.sendMessageToChannel(channel, "Incorrect role mentions given");
-			return;
-		}
-		
 		if (selfMember.hasPermission(Permission.MESSAGE_MANAGE))
 		{
 			event.getMessage().delete().queue();
 		}
 		
-		Long guildId = event.getGuild().getIdLong();
-		Set<Long> roleIds = mentionedRoles
-								.stream()
-								.map((role) -> role.getIdLong())
-								.collect(Collectors.toSet());
+		List<String> mentionedStr = args.stream()
+										.map(
+											(roleStr) -> roleStr.substring(3, (roleStr.length() - 1))
+										).collect(Collectors.toList());
 		
-		SiegeInstance inst = SiegeManager.getInstance().getSiegeInstance(guildId);
-		if (inst == null)
+		LinkedHashSet<Long> roleIds = new LinkedHashSet<Long>();
+		for (String role : mentionedStr)
 		{
-			this.sendMessageToChannel(channel, "Siege instance not found for current guild");
-			return;
+			Long roleId;
+			try
+			{
+				roleId = Long.parseLong(role);
+			}
+			catch (NumberFormatException ex)
+			{
+				this.sendMessageToChannel(channel, "Incorrect role mention given");
+				return;
+			}
+			
+			roleIds.add(roleId);
 		}
 		
-		inst.setPrefixRoles(roleIds);
+		SiegeManager.getInstance().addPrefixRoles(guild.getIdLong(), roleIds);
 		this.sendMessageToChannel(channel, "Prefix roles successfully set");
 	}
 
