@@ -12,7 +12,6 @@ import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 
 public class AddPlayerCommand implements ICommand
 {
-
 	@Override
 	public void handle(List<String> args, GuildMessageReceivedEvent event)
 	{

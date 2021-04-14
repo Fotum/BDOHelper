@@ -1,27 +1,12 @@
 package org.fotum.app;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
-
-import org.fotum.app.commands.siege.AddPlayerCommand;
-import org.fotum.app.commands.siege.AddSiegeCommand;
-import org.fotum.app.commands.siege.RemoveListeningChannel;
-import org.fotum.app.commands.siege.RemoveManagingRole;
-import org.fotum.app.commands.siege.RemovePlayerCommand;
-import org.fotum.app.commands.siege.RemoveSiegeCommand;
-import org.fotum.app.commands.siege.SetDescriptionMessage;
-import org.fotum.app.commands.siege.SetListeningChannel;
-import org.fotum.app.commands.siege.SetManagingRole;
-import org.fotum.app.commands.siege.SetPrefixRoles;
-import org.fotum.app.commands.siege.SetTitleMessage;
-import org.fotum.app.commands.siege.SiegeHelp;
+import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import org.fotum.app.commands.owner.EvalCommand;
+import org.fotum.app.commands.siege.*;
 import org.fotum.app.objects.ICommand;
 
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import java.util.*;
+import java.util.regex.Pattern;
 
 public class CommandManager
 {
@@ -35,14 +20,18 @@ public class CommandManager
 		this.addCommand(new RemoveListeningChannel());
 		this.addCommand(new SetManagingRole());
 		this.addCommand(new RemoveManagingRole());
-		this.addCommand(new SetTitleMessage());
+		// this.addCommand(new SetTitleMessage());
 		this.addCommand(new SetPrefixRoles());
-		this.addCommand(new SetDescriptionMessage());
+		// this.addCommand(new SetDescriptionMessage());
 		
 		this.addCommand(new AddPlayerCommand());
 		this.addCommand(new RemovePlayerCommand());
 		
+		this.addCommand(new ForceAddPlayersCommand());
+		this.addCommand(new ForceRemPlayersCommand());
+		
 		this.addCommand(new SiegeHelp(this));
+		this.addCommand(new EvalCommand());
 	}
 	
 	public Collection<ICommand> getCommands()

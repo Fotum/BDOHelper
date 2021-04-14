@@ -31,7 +31,7 @@ public class SetPrefixRoles implements ICommand
 			return;
 		}
 
-		Long allowedRoleId = SiegeManager.getInstance().getManagingRole(event.getGuild().getIdLong());
+		Long allowedRoleId = SiegeManager.getInstance().getManagingRole(guild.getIdLong());
 		if (allowedRoleId == null)
 		{
 			this.sendMessageToChannel(channel, "Siege managing role is not configured");

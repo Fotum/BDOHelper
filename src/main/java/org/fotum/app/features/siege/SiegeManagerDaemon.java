@@ -3,23 +3,23 @@ package org.fotum.app.features.siege;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Map.Entry;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class SiegeManagerDaemon extends Thread
 {
 	private boolean isRunning;
 	private SiegeManager manager;
 	
-	Logger logger = LoggerFactory.getLogger(SiegeManagerDaemon.class);
-	
 	public SiegeManagerDaemon(SiegeManager manager)
 	{
-		logger.info("Siege daemon initialized");
+		log.info("Siege daemon initialized");
 		this.manager = manager;
 	}
 	
+	@Override
 	public void run()
 	{
 		this.isRunning = true;
@@ -27,15 +27,18 @@ public class SiegeManagerDaemon extends Thread
 		while (isRunning)
 		{
 			Map<Long, SiegeInstance> instances = manager.getSiegeInstances();
-			for (SiegeInstance inst : instances.values())
+			for (Entry<Long, SiegeInstance> instEntry : instances.entrySet())
 			{
 				LocalDateTime dtNow = LocalDateTime.now();
-				LocalDate instDt = inst.getStartDt();
-				LocalDateTime unschedAt = instDt.atTime(20, 00);
+				LocalDate instDt = instEntry.getValue().getStartDt();
+				LocalDateTime unschedAt = instDt.atTime(20, 0);
 				
 				if (dtNow.isAfter(unschedAt))
 				{
-					inst.stopInstance();
+					instEntry.getValue().stopInstance();
+					instances.remove(instEntry.getKey());
+
+					log.info("Unscheduled siege for Guild with ID: " + instEntry.getKey());
 				}
 			}
 			

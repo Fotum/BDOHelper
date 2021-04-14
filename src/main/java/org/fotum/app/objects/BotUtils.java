@@ -1,19 +1,13 @@
 package org.fotum.app.objects;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.Map;
-import java.util.Set;
-
 import org.fotum.app.Constants;
 import org.fotum.app.features.siege.SiegeInstance;
 import org.fotum.app.features.siege.SiegeManager;
 
-import net.dv8tion.jda.api.JDA;
+import java.io.*;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
 public class BotUtils
 {
@@ -24,7 +18,7 @@ public class BotUtils
 		BotUtils.serializeObject("prefix_roles.dat", SiegeManager.getInstance().getPrefixRoles());
 	}
 
-	public static void loadConfigs(JDA jda)
+	public static void loadConfigs()
 	{
 		Map<Long, Long> channels = BotUtils.deserializeObject("listening_channels.dat");
 		if (channels != null)
@@ -46,7 +40,7 @@ public class BotUtils
 		
 		File outFile = new File(Constants.SETTINGS_LOC + File.separator + fileNm);
 		try (FileOutputStream fos = new FileOutputStream(outFile);
-				ObjectOutputStream oos = new ObjectOutputStream(fos);
+				ObjectOutputStream oos = new ObjectOutputStream(fos)
 			)
 		{
 			oos.writeObject(obj);
@@ -57,7 +51,7 @@ public class BotUtils
 			ex.printStackTrace();
 		}
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	public static <T> T deserializeObject(String fileNm)
 	{
@@ -66,10 +60,10 @@ public class BotUtils
 		{
 			return null;
 		}
-		
+
 		T obj = null;
 		try (FileInputStream fis = new FileInputStream(inFile);
-				ObjectInputStream ois = new ObjectInputStream(fis);
+				ObjectInputStream ois = new ObjectInputStream(fis)
 			)
 		{
 			obj = (T) ois.readObject();
@@ -78,15 +72,18 @@ public class BotUtils
 		{
 			ex.printStackTrace();
 		}
-		
+
 		return obj;
 	}
-	
+
 	public static void shutdownInstances()
 	{
 		Map<Long, SiegeInstance> instances = SiegeManager.getInstance().getSiegeInstances();
-		for (Long guildId : instances.keySet())
+		Iterator<Long> instancesIter = instances.keySet().iterator();
+
+		while (instancesIter.hasNext())
 		{
+			Long guildId = instancesIter.next();
 			SiegeManager.getInstance().removeSiegeInstance(guildId);
 		}
 	}

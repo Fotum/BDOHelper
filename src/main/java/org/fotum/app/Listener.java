@@ -1,7 +1,5 @@
 package org.fotum.app;
 
-import org.fotum.app.objects.BotUtils;
-
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.ChannelType;
@@ -12,6 +10,7 @@ import net.dv8tion.jda.api.events.ReadyEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.fotum.app.objects.BotUtils;
 
 @Slf4j
 class Listener extends ListenerAdapter
@@ -29,7 +28,7 @@ class Listener extends ListenerAdapter
 		log.info(String.format("Logged in as %#s", event.getJDA().getSelfUser()));
 		
 		log.info("Loading configs");
-		BotUtils.loadConfigs(event.getJDA());
+		BotUtils.loadConfigs();
 		log.info("Configs successfully loaded");
 	}
 	
@@ -60,8 +59,8 @@ class Listener extends ListenerAdapter
 		
 		String rw = event.getMessage().getContentRaw();
 		
-		if (rw.equalsIgnoreCase(Constants.PREFIX + "helperoff") &&
-				event.getAuthor().getIdLong() == Constants.OWNER)
+		if (rw.equalsIgnoreCase(Constants.PREFIX + "helperoff")
+			&& event.getAuthor().getIdLong() == Constants.OWNER)
 		{
 			this.shutdown(event.getJDA());
 			return;

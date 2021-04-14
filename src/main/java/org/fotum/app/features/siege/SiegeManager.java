@@ -72,8 +72,7 @@ public class SiegeManager
 
 	public void removeListeningChannel(Long guildId)
 	{
-		if (this.listeningChannels.containsKey(guildId))
-			this.listeningChannels.remove(guildId);
+		this.listeningChannels.remove(guildId);
 	}
 
 	public Long getManagingRole(Long guildId)
@@ -92,15 +91,12 @@ public class SiegeManager
 
 	public void removeManagingRole(Long guildId)
 	{
-		if (this.managingRoles.containsKey(guildId))
-			this.managingRoles.remove(guildId);
+		this.managingRoles.remove(guildId);
 	}
 	
 	public void addPrefixRoles(Long guildId, Set<Long> roleIds)
 	{
-		if (this.prefixRoles.containsKey(guildId))
-			this.prefixRoles.remove(guildId);
-
+		this.prefixRoles.remove(guildId);
 		this.prefixRoles.put(guildId, roleIds);
 	}
 	

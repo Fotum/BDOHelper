@@ -1,18 +1,15 @@
 package org.fotum.app;
 
-import java.awt.Color;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.util.Random;
-
-import org.fotum.app.config.Config;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.sharding.DefaultShardManager;
+import org.fotum.app.config.Config;
+
+import java.awt.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Random;
 
 // #TODO: Начать документировать и комментировать код
 /**
@@ -21,20 +18,20 @@ import net.dv8tion.jda.api.sharding.DefaultShardManager;
  * @author Fotum
  *
  */
+@Slf4j
 public class MainApp
 {
 	private static final Random RANDOM = new Random();
 
-	private MainApp() throws IOException, URISyntaxException
+	private static void initApp() throws IOException
 	{
-		InputStream configRes = this.getClass().getResourceAsStream("/botconfig.json");
+		InputStream configRes = MainApp.class.getResourceAsStream("/botconfig.json");
 		Config config = new Config(configRes);
 
 		CommandManager commandManager = new CommandManager();
 		Listener listener = new Listener(commandManager);
-		
-		Logger logger = LoggerFactory.getLogger(MainApp.class);
-		logger.info("Booting");
+
+		log.info("Booting");
 		Constants.initConstants();
 
 		DefaultShardManager shardManager = new DefaultShardManager(config.getString("token"));
@@ -43,20 +40,20 @@ public class MainApp
 		shardManager.addEventListener(listener);
 		shardManager.start(0);
 
-		logger.info("Running");
+		log.info("Running");
 	}
-	
-	public static void main(String... args) throws IOException, URISyntaxException
+
+	public static void main(String... args) throws IOException
 	{
-		new MainApp();
+		MainApp.initApp();
 	}
-	
+
 	public static Color getRandomColor()
 	{
 		float r = RANDOM.nextFloat();
 		float g = RANDOM.nextFloat();
 		float b = RANDOM.nextFloat();
-		
+
 		return new Color(r, g, b);
 	}
 }

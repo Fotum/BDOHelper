@@ -1,16 +1,15 @@
 package org.fotum.app.commands.siege;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
-
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import org.fotum.app.CommandManager;
 import org.fotum.app.Constants;
 import org.fotum.app.objects.EmbedCreator;
 import org.fotum.app.objects.ICommand;
 
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class SiegeHelp implements ICommand
 {
@@ -29,10 +28,10 @@ public class SiegeHelp implements ICommand
 				.filter(
 					(command) -> {
 						String cmd = command.getInvoke();
-						return (cmd.equalsIgnoreCase("+") ||
-								cmd.equalsIgnoreCase("-") ||
-								cmd.isEmpty()
-								) ? false : true;
+						return !cmd.equalsIgnoreCase("+") &&
+								!cmd.equalsIgnoreCase("-") &&
+								!cmd.equalsIgnoreCase("eval") &&
+								!cmd.isEmpty();
 				})
 				.collect(Collectors.toList());
 		

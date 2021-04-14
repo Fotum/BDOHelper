@@ -48,10 +48,10 @@ public class SiegeInstance extends Thread
 	private Set<Long> latePlayers;
 
 	private TextChannel channel;
-	private Message messageToEdit;
+	private Message siegeAnnounceMsg;
 	private Message messageMention;
 	private EmbedBuilder eBuilder;
-	
+
 	public SiegeInstance(Long guildId, TextChannel channel, LocalDate startDt, String zone, int playersMax)
 	{
 		this.guildId = guildId;
@@ -63,14 +63,14 @@ public class SiegeInstance extends Thread
 		this.announcerDelay = 5L;
 		this.titleMessage = "Осада %s (%s) на канале - %s 1";
 		this.descriptionMessage = "Взять с собой Топор трины +18, Карки и Гиганты. Оставляйте заявки на осаду: \"+\"";
-		this.messageToEdit = null;
+		this.siegeAnnounceMsg = null;
 		this.messageMention = null;
 
 		this.registredPlayers = new LinkedHashSet<Long>();
 		this.latePlayers = new LinkedHashSet<Long>();
 		this.eBuilder = new EmbedBuilder().setColor(MainApp.getRandomColor());
 	}
-	
+
 	@Override
 	public void run()
 	{
@@ -85,53 +85,8 @@ public class SiegeInstance extends Thread
 
 		while (isRunning)
 		{
-			int slotsRemain = playersMax - registredPlayers.size();
-			String dayOfWeek = this.startDt.getDayOfWeek().getDisplayName(TextStyle.FULL, new Locale("ru"));
-			String dateStr = this.startDt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
-			String announce = String.format(this.titleMessage, dateStr, dayOfWeek, this.zone);
+			this.generateAndSendSiegeEmbed();
 
-			this.eBuilder.setTitle(announce);
-			this.eBuilder.setDescription(this.descriptionMessage);
-			this.eBuilder.clearFields();
-			this.eBuilder.addField("Плюсов на осаду", String.valueOf(this.registredPlayers.size()), true);
-			this.eBuilder.addField("Осталось слотов", String.valueOf(slotsRemain), true);
-			this.eBuilder.addBlankField(true);
-
-			for (Long roleId : manager.getPrefixRolesById(this.guildId))
-			{
-				Role prefixRole = this.channel.getGuild().getRoleById(roleId);
-				String fieldText = this.convertPlayersSetByRole(this.registredPlayers, prefixRole);
-				if (!fieldText.isEmpty())
-					this.addFieldToEmbed(this.eBuilder, prefixRole.getName(), fieldText, true);
-			}
-
-			String noRoleList = this.convertPlayersWithoutRole(this.registredPlayers);
-			if (!noRoleList.isEmpty())
-				this.addFieldToEmbed(this.eBuilder, "Без роли", noRoleList, true);
-
-			String lateList = this.latePlayers.stream()
-								.map(
-									(memberId) -> String.format("%s", this.channel.getGuild().getMemberById(memberId).getAsMention())
-								).collect(Collectors.joining("\n"));
-
-			if (!lateList.isEmpty())
-				this.addFieldToEmbed(this.eBuilder, "Опоздашки", lateList, true);
-
-			if (this.messageToEdit != null)
-			{
-				this.messageToEdit
-					.editMessage(eBuilder.build())
-					.queue(null, new ErrorHandler()
-									.handle(ErrorResponse.UNKNOWN_MESSAGE, (ex) -> this.messageToEdit = null)
-					);
-			}
-			else
-			{
-				this.channel.sendMessage(eBuilder.build()).queue(
-					(message) -> this.messageToEdit = message
-				);
-			}
-			
 			try
 			{
 				TimeUnit.SECONDS.sleep(announcerDelay);
@@ -143,29 +98,29 @@ public class SiegeInstance extends Thread
 			}
 		}
 	}
-	
+
 	@Synchronized
 	public boolean isRunning()
 	{
 		return this.isRunning;
 	}
-	
+
 	@Synchronized
 	public void stopInstance()
 	{
-		if (!this.isRunning)
+		if (!this.isRunning())
 			return;
-		
+
 		this.isRunning = false;
-		
+
 		if (this.messageMention != null)
 			this.messageMention.delete().queue(null, new ErrorHandler()
-															.handle(ErrorResponse.UNKNOWN_MESSAGE, (ex) -> ex.printStackTrace())
+															.handle(ErrorResponse.UNKNOWN_MESSAGE, Throwable::printStackTrace)
 			);
-		
-		if (this.messageToEdit != null)
-			this.messageToEdit.delete().queue(null, new ErrorHandler()
-															.handle(ErrorResponse.UNKNOWN_MESSAGE, (ex) -> ex.printStackTrace())
+
+		if (this.siegeAnnounceMsg != null)
+			this.siegeAnnounceMsg.delete().queue(null, new ErrorHandler()
+															.handle(ErrorResponse.UNKNOWN_MESSAGE, Throwable::printStackTrace)
 			);
 	}
 
@@ -200,6 +155,56 @@ public class SiegeInstance extends Thread
 		}
 	}
 
+	private void generateAndSendSiegeEmbed()
+	{
+		int slotsRemain = playersMax - registredPlayers.size();
+		String dayOfWeek = this.startDt.getDayOfWeek().getDisplayName(TextStyle.FULL, new Locale("ru"));
+		String dateStr = this.startDt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+		String announce = String.format(this.titleMessage, dateStr, dayOfWeek, this.zone);
+
+		this.eBuilder.setTitle(announce);
+		this.eBuilder.setDescription(this.descriptionMessage);
+		this.eBuilder.clearFields();
+		this.eBuilder.addField("Плюсов на осаду", String.valueOf(this.registredPlayers.size()), true);
+		this.eBuilder.addField("Осталось слотов", String.valueOf(slotsRemain), true);
+		this.eBuilder.addBlankField(true);
+
+		for (Long roleId : manager.getPrefixRolesById(this.guildId))
+		{
+			Role prefixRole = this.channel.getGuild().getRoleById(roleId);
+			String fieldText = this.convertPlayersSetByRole(this.registredPlayers, prefixRole);
+			if (!fieldText.isEmpty())
+				this.addFieldToEmbed(this.eBuilder, prefixRole.getName(), fieldText, true);
+		}
+
+		String noRoleList = this.convertPlayersWithoutRole(this.registredPlayers);
+		if (!noRoleList.isEmpty())
+			this.addFieldToEmbed(this.eBuilder, "Без роли", noRoleList, true);
+
+		String lateList = this.latePlayers.stream()
+				.map(
+						(memberId) -> String.format("%s", this.channel.getGuild().getMemberById(memberId).getAsMention())
+				).collect(Collectors.joining("\n"));
+
+		if (!lateList.isEmpty())
+			this.addFieldToEmbed(this.eBuilder, "Опоздашки", lateList, true);
+
+		if (this.siegeAnnounceMsg != null)
+		{
+			this.siegeAnnounceMsg
+					.editMessage(eBuilder.build())
+					.queue(null, new ErrorHandler()
+							.handle(ErrorResponse.UNKNOWN_MESSAGE, (ex) -> this.siegeAnnounceMsg = null)
+					);
+		}
+		else
+		{
+			this.channel.sendMessage(eBuilder.build()).queue(
+					(message) -> this.siegeAnnounceMsg = message
+			);
+		}
+	}
+
 	private void addFieldToEmbed(EmbedBuilder builder, String fieldNm, String fieldVal, boolean inline)
 	{
 		if (fieldVal.length() > MessageEmbed.VALUE_MAX_LENGTH)
@@ -230,20 +235,18 @@ public class SiegeInstance extends Thread
 	{
 		Guild guild = this.channel.getGuild();
 		List<Member> members = playersSet.stream()
-								.map((memId) -> guild.getMemberById(memId))
+								.map(guild::getMemberById)
 								.collect(Collectors.toList());
 
-		String filtered = members.stream()
-							.filter(
-								(member) -> {
-									List<Role> memberRoles = member.getRoles();
-									return memberRoles.contains(role);
-								}
-							).map(
-								(member) -> String.format("%s", member.getAsMention())
-							).collect(Collectors.joining("\n"));
-
-		return filtered;
+		return members.stream()
+					.filter(
+						(member) -> {
+							List<Role> memberRoles = member.getRoles();
+							return memberRoles.contains(role);
+						}
+					).map(
+						(member) -> String.format("%s", member.getAsMention())
+					).collect(Collectors.joining("\n"));
 	}
 
 	private String convertPlayersWithoutRole(Set<Long> playersSet)
@@ -251,22 +254,20 @@ public class SiegeInstance extends Thread
 		Guild guild = this.channel.getGuild();
 		List<Role> prefixes = manager.getPrefixRolesById(this.guildId)
 								.stream()
-								.map((roleId) -> guild.getRoleById(roleId))
+								.map(guild::getRoleById)
 								.collect(Collectors.toList());
 		List<Member> members = playersSet.stream()
-								.map((memId) -> guild.getMemberById(memId))
+								.map(guild::getMemberById)
 								.collect(Collectors.toList());
 
-		String filtered = members.stream()
-				.filter(
-					(member) -> {
-						List<Role> memberRoles = member.getRoles();
-						return !memberRoles.stream().anyMatch((memberRole) -> prefixes.contains(memberRole));
-					}
-				).map(
-					(member) -> String.format("%s", member.getAsMention())
-				).collect(Collectors.joining("\n"));
-
-		return filtered;
+		return members.stream()
+					.filter(
+						(member) -> {
+							List<Role> memberRoles = member.getRoles();
+							return memberRoles.stream().noneMatch(prefixes::contains);
+						}
+					).map(
+						(member) -> String.format("%s", member.getAsMention())
+					).collect(Collectors.joining("\n"));
 	}
 }

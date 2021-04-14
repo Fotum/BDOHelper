@@ -25,5 +25,4 @@ public class SetDescriptionMessage implements ICommand
 	{
 		return "setdesc";
 	}
-
 }
