@@ -2,7 +2,7 @@ package org.fotum.app.commands.siege;
 
 import java.util.List;
 
-import org.fotum.app.features.siege.SiegeManager;
+import org.fotum.app.features.siege.GuildManager;
 import org.fotum.app.objects.ICommand;
 
 import net.dv8tion.jda.api.Permission;
@@ -17,23 +17,21 @@ public class AddPlayerCommand implements ICommand
 	{
 		TextChannel channel = event.getChannel();
 		Member selfMember = event.getGuild().getSelfMember();
-		Member author = event.getMember();
-		SiegeManager manager = SiegeManager.getInstance();
-		
-		Long channelId = channel.getIdLong();
-		Long guildId = event.getGuild().getIdLong();
-		Long registredChannelId = manager.getListeningChannel(guildId);
-		
-		if (registredChannelId.compareTo(channelId) != 0)
+		GuildManager manager = GuildManager.getInstance();
+
+		long guildId = event.getGuild().getIdLong();
+		long listeningChannelId = manager.getGuildSettings(guildId).getListeningChannel();
+
+		if (listeningChannelId != channel.getIdLong())
 			return;
-		
+
 		if (selfMember.hasPermission(Permission.MESSAGE_MANAGE))
 		{
 			event.getMessage().delete().queue();
 		}
 		
 		if (manager.getSiegeInstance(guildId) != null)
-			manager.getSiegeInstance(guildId).addPlayer(author.getIdLong());
+			manager.getSiegeInstance(guildId).addPlayer(event.getMember().getIdLong());
 	}
 
 	@Override

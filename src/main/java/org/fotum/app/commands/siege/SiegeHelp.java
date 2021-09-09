@@ -1,9 +1,11 @@
 package org.fotum.app.commands.siege;
 
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import org.fotum.app.CommandManager;
 import org.fotum.app.Constants;
+import org.fotum.app.utils.BotUtils;
 import org.fotum.app.objects.EmbedCreator;
 import org.fotum.app.objects.ICommand;
 
@@ -23,6 +25,11 @@ public class SiegeHelp implements ICommand
 	@Override
 	public void handle(List<String> args, GuildMessageReceivedEvent event)
 	{
+		if (event.getGuild().getSelfMember().hasPermission(Permission.MESSAGE_MANAGE))
+		{
+			event.getMessage().delete().queue();
+		}
+
 		List<ICommand> available = manager.getCommands()
 				.stream()
 				.filter(
@@ -46,8 +53,8 @@ public class SiegeHelp implements ICommand
 
 		if (command == null)
 		{
-			event.getChannel().sendMessage("The command `" + joined + "` does not exist\n" + 
-					"Use `" + Constants.PREFIX + this.getInvoke() + "` for a list of commands").queue();
+			BotUtils.sendMessageToChannel(event.getChannel(), "The command `" + joined + "` does not exist\n" +
+					"Use `" + Constants.PREFIX + this.getInvoke() + "` for a list of commands");
 			return;
 		}
 		

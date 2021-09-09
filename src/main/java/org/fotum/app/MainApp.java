@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.sharding.DefaultShardManager;
 import org.fotum.app.config.Config;
 
 import java.awt.*;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Random;
@@ -25,8 +26,7 @@ public class MainApp
 
 	private static void initApp() throws IOException
 	{
-		InputStream configRes = MainApp.class.getResourceAsStream("/botconfig.json");
-		Config config = new Config(configRes);
+		Config config = Config.getInstance();
 
 		CommandManager commandManager = new CommandManager();
 		Listener listener = new Listener(commandManager);

@@ -1,8 +1,10 @@
 package org.fotum.app;
 
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import org.fotum.app.commands.moderation.ClearCommand;
 import org.fotum.app.commands.owner.EvalCommand;
 import org.fotum.app.commands.siege.*;
+import org.fotum.app.commands.siege.settings.*;
 import org.fotum.app.objects.ICommand;
 
 import java.util.*;
@@ -14,23 +16,32 @@ public class CommandManager
 	
 	public CommandManager()
 	{
+		// Siege managing commands
 		this.addCommand(new AddSiegeCommand());
 		this.addCommand(new RemoveSiegeCommand());
 		this.addCommand(new SetListeningChannel());
 		this.addCommand(new RemoveListeningChannel());
-		this.addCommand(new SetManagingRole());
-		this.addCommand(new RemoveManagingRole());
-		// this.addCommand(new SetTitleMessage());
+		this.addCommand(new SetManagingRoles());
+		this.addCommand(new RemoveManagingRoles());
 		this.addCommand(new SetPrefixRoles());
-		// this.addCommand(new SetDescriptionMessage());
-		
+		this.addCommand(new SetMentionRoles());
+		this.addCommand(new RemoveMentionRoles());
+		this.addCommand(new AutoregCommand());
+		this.addCommand(new UpdateSiegeSettingsCommand());
+
+		// Players commands to add/remove themselves from list
 		this.addCommand(new AddPlayerCommand());
 		this.addCommand(new RemovePlayerCommand());
-		
+
+		// Managing commands to force add/remove players from list
 		this.addCommand(new ForceAddPlayersCommand());
 		this.addCommand(new ForceRemPlayersCommand());
-		
+
+		// General purpose commands
 		this.addCommand(new SiegeHelp(this));
+		// Moderation commands
+		this.addCommand(new ClearCommand());
+		// Owner commands
 		this.addCommand(new EvalCommand());
 	}
 	
@@ -51,7 +62,7 @@ public class CommandManager
 		
 		if (commands.containsKey(invoke))
 		{
-			final List<String> args = Arrays.asList(split).subList(1, split.length);
+			final List<String> args = new ArrayList<String>(Arrays.asList(split).subList(1, split.length));
 			commands.get(invoke).handle(args, event);
 		}
 	}

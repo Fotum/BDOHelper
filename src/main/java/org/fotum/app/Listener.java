@@ -10,7 +10,7 @@ import net.dv8tion.jda.api.events.ReadyEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import org.fotum.app.objects.BotUtils;
+import org.fotum.app.utils.BotUtils;
 
 @Slf4j
 class Listener extends ListenerAdapter
@@ -26,10 +26,7 @@ class Listener extends ListenerAdapter
 	public void onReady(ReadyEvent event)
 	{
 		log.info(String.format("Logged in as %#s", event.getJDA().getSelfUser()));
-		
-		log.info("Loading configs");
-		BotUtils.loadConfigs();
-		log.info("Configs successfully loaded");
+		BotUtils.runStartupSequence(event.getJDA());
 	}
 	
 	@Override
@@ -79,11 +76,8 @@ class Listener extends ListenerAdapter
 	private void shutdown(JDA jda)
 	{
 		log.info("Manual shutdown initiated...");
-		log.info("Shutting down siege instances");
-		BotUtils.shutdownInstances();
-		log.info("Saving configs");
-		BotUtils.saveConfigs();
-		log.info("Shutting down JDA");
+		BotUtils.runShutdownSequence();
+		log.info("Shutdown sequence successfully finished, shutting down JDA");
 		jda.shutdown();
 		System.exit(0);
 	}

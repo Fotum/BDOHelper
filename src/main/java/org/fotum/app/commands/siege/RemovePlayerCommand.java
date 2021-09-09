@@ -1,31 +1,29 @@
 package org.fotum.app.commands.siege;
 
-import java.util.List;
-
-import org.fotum.app.features.siege.SiegeManager;
-import org.fotum.app.objects.ICommand;
-
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import org.fotum.app.features.siege.GuildManager;
+import org.fotum.app.objects.ICommand;
+
+import java.util.List;
 
 public class RemovePlayerCommand implements ICommand
 {
-
 	@Override
 	public void handle(List<String> args, GuildMessageReceivedEvent event)
 	{
 		TextChannel channel = event.getChannel();
 		Member selfMember = event.getGuild().getSelfMember();
 		Member author = event.getMember();
-		SiegeManager manager = SiegeManager.getInstance();
+		GuildManager manager = GuildManager.getInstance();
 		
-		Long channelId = channel.getIdLong();
-		Long guildId = event.getGuild().getIdLong();
-		Long registredChannelId = manager.getListeningChannel(guildId);
+		long channelId = channel.getIdLong();
+		long guildId = event.getGuild().getIdLong();
+		long listeningChannelId = manager.getGuildSettings(guildId).getListeningChannel();
 		
-		if (registredChannelId.compareTo(channelId) != 0)
+		if (listeningChannelId != channelId)
 			return;
 		
 		if (selfMember.hasPermission(Permission.MESSAGE_MANAGE))
@@ -48,5 +46,4 @@ public class RemovePlayerCommand implements ICommand
 	{
 		return "-";
 	}
-
 }

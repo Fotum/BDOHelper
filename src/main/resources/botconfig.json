@@ -1,5 +1,4 @@
 {
 	"token": "DISCORD_TOKEN",
-	"loadcommands": true,
-	"owner": "OWNER_ID",
+	"vk_service_key": "VK_SERVICE_KEY"
 }

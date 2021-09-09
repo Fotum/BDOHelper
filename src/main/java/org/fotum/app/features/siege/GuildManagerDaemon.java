@@ -1,19 +1,21 @@
 package org.fotum.app.features.siege;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SiegeManagerDaemon extends Thread
+public class GuildManagerDaemon extends Thread
 {
 	private boolean isRunning;
-	private SiegeManager manager;
+	private GuildManager manager;
 	
-	public SiegeManagerDaemon(SiegeManager manager)
+	public GuildManagerDaemon(GuildManager manager)
 	{
 		log.info("Siege daemon initialized");
 		this.manager = manager;
@@ -24,14 +26,21 @@ public class SiegeManagerDaemon extends Thread
 	{
 		this.isRunning = true;
 		
-		while (isRunning)
+		while (this.isRunning)
 		{
 			Map<Long, SiegeInstance> instances = manager.getSiegeInstances();
 			for (Entry<Long, SiegeInstance> instEntry : instances.entrySet())
 			{
 				LocalDateTime dtNow = LocalDateTime.now();
 				LocalDate instDt = instEntry.getValue().getStartDt();
-				LocalDateTime unschedAt = instDt.atTime(20, 0);
+				DayOfWeek instDayOfWeek = instEntry.getValue().getStartDt().getDayOfWeek();
+
+				int unschedHour = 21;
+				if (instDayOfWeek == DayOfWeek.SATURDAY || instDayOfWeek == DayOfWeek.SUNDAY)
+					unschedHour = 20;
+
+				LocalDateTime unschedAt = instDt.atTime(unschedHour, 0);
+
 				
 				if (dtNow.isAfter(unschedAt))
 				{
@@ -44,7 +53,7 @@ public class SiegeManagerDaemon extends Thread
 			
 			try
 			{
-				Thread.sleep(60000L);
+				TimeUnit.MINUTES.sleep(1L);
 			}
 			catch (InterruptedException ex)
 			{

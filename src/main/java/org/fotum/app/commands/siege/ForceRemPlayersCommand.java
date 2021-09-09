@@ -1,19 +1,17 @@
 package org.fotum.app.commands.siege;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import org.fotum.app.Constants;
-import org.fotum.app.features.siege.SiegeInstance;
-import org.fotum.app.features.siege.SiegeManager;
-import org.fotum.app.objects.ICommand;
-
-import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import org.fotum.app.Constants;
+import org.fotum.app.features.siege.SiegeInstance;
+import org.fotum.app.features.siege.GuildManager;
+import org.fotum.app.utils.BotUtils;
+import org.fotum.app.objects.ICommand;
+import org.fotum.app.objects.checkers.PermissionChecker;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ForceRemPlayersCommand implements ICommand
 {
@@ -22,43 +20,21 @@ public class ForceRemPlayersCommand implements ICommand
 	{
 		Guild guild = event.getGuild();
 		TextChannel channel = event.getChannel();
-		Member selfMember = event.getGuild().getSelfMember();
 		
 		if (args.isEmpty())
 		{
-			this.sendMessageToChannel(channel, "You have to mention at least one player");
+			BotUtils.sendMessageToChannel(channel, "You have to mention at least one player");
 			return;
 		}
 
-		Long allowedRoleId = SiegeManager.getInstance().getManagingRole(guild.getIdLong());
-		if (allowedRoleId == null)
-		{
-			this.sendMessageToChannel(channel, "Siege managing role is not configured");
+		if (!PermissionChecker.checkGeneralPermissions(event))
 			return;
-		}
 		
-		boolean authorHasRole = event.getMember().getRoles()
-				.stream()
-				.anyMatch(
-					(role) -> role.getIdLong() == allowedRoleId
-				);
-
-		if (!authorHasRole)
-		{
-			this.sendMessageToChannel(channel, "You do not have permissions to use this command");
-			return;
-		}
-		
-		SiegeInstance siegeInst = SiegeManager.getInstance().getSiegeInstance(guild.getIdLong());
+		SiegeInstance siegeInst = GuildManager.getInstance().getSiegeInstance(guild.getIdLong());
 		if (siegeInst == null)
 		{
-			this.sendMessageToChannel(channel, "Active siege is not found for current guild");
+			BotUtils.sendMessageToChannel(channel, "Active siege is not found for current guild");
 			return;
-		}
-		
-		if (selfMember.hasPermission(Permission.MESSAGE_MANAGE))
-		{
-			event.getMessage().delete().queue();
 		}
 		
 		List<String> mentionedStr = args.stream()
@@ -76,7 +52,7 @@ public class ForceRemPlayersCommand implements ICommand
 			catch (NumberFormatException ex) {}
 		}
 
-		this.sendMessageToChannel(channel, "Player(s) successfully removed");
+		BotUtils.sendMessageToChannel(channel, "Player(s) successfully removed");
 	}
 
 	@Override
@@ -90,12 +66,5 @@ public class ForceRemPlayersCommand implements ICommand
 	public String getInvoke()
 	{
 		return "forcerem";
-	}
-
-	private void sendMessageToChannel(TextChannel channel, String msg)
-	{
-		channel.sendMessage(msg).queue(
-				 (message) -> message.delete().queueAfter(5L, TimeUnit.SECONDS)
-		);
 	}
 }
