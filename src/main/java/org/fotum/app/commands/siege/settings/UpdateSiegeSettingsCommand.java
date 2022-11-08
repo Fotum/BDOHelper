@@ -1,70 +1,77 @@
 package org.fotum.app.commands.siege.settings;
 
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.fotum.app.Constants;
-import org.fotum.app.features.siege.SiegeInstance;
 import org.fotum.app.features.siege.GuildManager;
-import org.fotum.app.utils.BotUtils;
-import org.fotum.app.objects.ICommand;
-import org.fotum.app.objects.checkers.PermissionChecker;
+import org.fotum.app.features.siege.GuildSettings;
+import org.fotum.app.features.siege.SiegeInstance;
+import org.fotum.app.interfaces.ISlashCommand;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Locale;
 
-public class UpdateSiegeSettingsCommand implements ICommand
+public class UpdateSiegeSettingsCommand implements ISlashCommand
 {
     @Override
-    public void handle(List<String> args, GuildMessageReceivedEvent event)
+    public void handle(SlashCommandInteractionEvent event)
     {
-        TextChannel channel = event.getChannel();
+        event.deferReply(true).queue();
 
-        if (!PermissionChecker.checkGeneralPermissions(event))
+        Guild guild = event.getGuild();
+        GuildManager manager = GuildManager.getInstance();
+        GuildSettings settings = manager.getGuildSettings(guild.getIdLong());
+
+        if (settings == null)
+        {
+            event.getHook().sendMessage("No siege settings configured for this guild").queue();
             return;
+        }
 
-        SiegeInstance inst = GuildManager.getInstance().getSiegeInstance(event.getGuild().getIdLong());
+        SiegeInstance inst = GuildManager.getInstance().getSiegeInstance(guild.getIdLong());
         if (inst == null)
         {
-            BotUtils.sendMessageToChannel(channel, "Active siege announcement is not found");
+            event.getHook().sendMessage("Active siege announcement is not found").queue();
             return;
         }
 
-        if (args.isEmpty())
-        {
-            BotUtils.sendMessageToChannel(channel, "Incorrect number of arguments given");
-            return;
-        }
-
-        switch (args.remove(0).toLowerCase())
+        List<OptionMapping> opts = event.getOptions();
+        switch (opts.get(0).getAsString().toLowerCase(Locale.ROOT))
         {
             case ("date"):
-                this.updateDate(args.get(0), inst, event);
+                this.updateDate(opts.get(1).getAsString(), inst, event);
                 break;
 
             case ("zone"):
-                this.updateZone(args.get(0), inst, event);
+                this.updateZone(opts.get(1).getAsString(), inst, event);
                 break;
 
             case ("maxplrs"):
-                this.updateMaxPlayers(args.get(0), inst, event);
+                this.updateMaxPlayers(opts.get(1).getAsString(), inst, event);
                 break;
 
             case ("desc"):
-                this.updateSiegeDesc(args, inst, event);
+                this.updateSiegeDesc(opts.get(1).getAsString(), inst, event);
                 break;
 
             default:
-                BotUtils.sendMessageToChannel(event.getChannel(), "Incorrect parameters given");
+                event.getHook().sendMessage("Incorrect parameters given").queue();
                 break;
         }
     }
 
-    private void updateDate(String val, SiegeInstance inst, GuildMessageReceivedEvent event)
+    @Override
+    public String getInvoke()
     {
-        TextChannel channel = event.getChannel();
+        return "updsiege";
+    }
 
+    private void updateDate(String val, SiegeInstance inst, SlashCommandInteractionEvent event)
+    {
         LocalDate startDt;
         try
         {
@@ -72,42 +79,38 @@ public class UpdateSiegeSettingsCommand implements ICommand
         }
         catch (DateTimeParseException ex)
         {
-            BotUtils.sendMessageToChannel(channel, "Incorrect date format given, expected format is `dd.mm.yyyy`");
+            event.getHook().sendMessage("Incorrect date format given, expected format is `dd.mm.yyyy`").queue();
             return;
         }
 
         if (startDt.isBefore(LocalDate.now()))
         {
-            BotUtils.sendMessageToChannel(channel, "Can only change siege date on a future date");
+            event.getHook().sendMessage("Can only change siege date on a future date").queue();
             return;
         }
 
         inst.setStartDt(startDt);
         inst.updateTitle();
-        BotUtils.sendMessageToChannel(channel, "Siege date successfully updated");
+        event.getHook().sendMessage("Siege date successfully updated").queue();
     }
 
-    private void updateZone(String val, SiegeInstance inst, GuildMessageReceivedEvent event)
+    private void updateZone(String val, SiegeInstance inst, SlashCommandInteractionEvent event)
     {
-        TextChannel channel = event.getChannel();
-
         String zone = Constants.ZONES.get(val.toLowerCase());
         if (zone == null)
         {
             String correctZones = String.join(", ", Constants.ZONES.keySet());
-            BotUtils.sendMessageToChannel(channel, "Incorrect zone identifier given, expected one of the following: `[" + correctZones + "]`");
+            event.getHook().sendMessage("Incorrect zone identifier given, expected one of the following: `[" + correctZones + "]`").queue();
             return;
         }
 
         inst.setZone(zone);
         inst.updateTitle();
-        BotUtils.sendMessageToChannel(channel, "Siege zone successfully updated");
+        event.getHook().sendMessage("Siege zone successfully updated").queue();
     }
 
-    private void updateMaxPlayers(String val, SiegeInstance inst, GuildMessageReceivedEvent event)
+    private void updateMaxPlayers(String val, SiegeInstance inst, SlashCommandInteractionEvent event)
     {
-        TextChannel channel = event.getChannel();
-
         int playersAmount;
         try
         {
@@ -115,33 +118,18 @@ public class UpdateSiegeSettingsCommand implements ICommand
         }
         catch (NumberFormatException ex)
         {
-            BotUtils.sendMessageToChannel(channel, "Incorrect number of players given");
+            event.getHook().sendMessage("Incorrect number of players given").queue();
             return;
         }
 
         inst.setPlayersMax(playersAmount);
         inst.rearrangePlayers();
-        BotUtils.sendMessageToChannel(channel, "Siege maximum players successfully updated");
+        event.getHook().sendMessage("Siege maximum players successfully updated").queue();
     }
 
-    private void updateSiegeDesc(List<String> val, SiegeInstance inst, GuildMessageReceivedEvent event)
+    private void updateSiegeDesc(String val, SiegeInstance inst, SlashCommandInteractionEvent event)
     {
-        TextChannel channel = event.getChannel();
-
-        inst.setDescriptionMessage(String.join(" ", val));
-        BotUtils.sendMessageToChannel(channel, "Siege description successfully updated");
-    }
-
-    @Override
-    public String getHelp()
-    {
-        return "Updates settings of currently active siege\n" +
-                "Usage: `" + this.getInvoke() + " [date/zone/maxplrs/desc] <new_value>`";
-    }
-
-    @Override
-    public String getInvoke()
-    {
-        return "updsiege";
+        inst.setDescriptionMessage(val);
+        event.getHook().sendMessage("Siege description successfully updated").queue();
     }
 }

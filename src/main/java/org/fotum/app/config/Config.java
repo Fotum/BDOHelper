@@ -10,12 +10,12 @@ public class Config extends JSONObject
 {
 	private static Config instance;
 	
-	private Config(InputStream inStream) throws IOException
+	private Config(InputStream inStream)
 	{
 		super(new ConfigLoader().load(inStream));
 	}
 	
-	public static Config getInstance() throws IOException
+	public static Config getInstance()
 	{
 		if (instance == null)
 		{
@@ -23,8 +23,16 @@ public class Config extends JSONObject
 			{
 				if (instance == null)
 				{
-					InputStream configRes = MainApp.class.getResourceAsStream("/botconfig.json");
-					instance = new Config(configRes);
+					try
+					{
+						InputStream configRes = MainApp.class.getResourceAsStream("/botconfig.json");
+						instance = new Config(configRes);
+						configRes.close();
+					}
+					catch (IOException ex)
+					{
+						ex.printStackTrace();
+					}
 				}
 			}
 		}

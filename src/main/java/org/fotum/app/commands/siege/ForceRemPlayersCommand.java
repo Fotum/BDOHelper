@@ -1,65 +1,45 @@
 package org.fotum.app.commands.siege;
 
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
-import org.fotum.app.Constants;
-import org.fotum.app.features.siege.SiegeInstance;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.fotum.app.features.siege.GuildManager;
-import org.fotum.app.utils.BotUtils;
-import org.fotum.app.objects.ICommand;
-import org.fotum.app.objects.checkers.PermissionChecker;
+import org.fotum.app.features.siege.GuildSettings;
+import org.fotum.app.features.siege.SiegeInstance;
+import org.fotum.app.interfaces.ISlashCommand;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-public class ForceRemPlayersCommand implements ICommand
+public class ForceRemPlayersCommand implements ISlashCommand
 {
 	@Override
-	public void handle(List<String> args, GuildMessageReceivedEvent event)
+	public void handle(SlashCommandInteractionEvent event)
 	{
+		event.deferReply(true).queue();
+
 		Guild guild = event.getGuild();
-		TextChannel channel = event.getChannel();
-		
-		if (args.isEmpty())
+		GuildManager manager = GuildManager.getInstance();
+
+		GuildSettings settings = manager.getGuildSettings(guild.getIdLong());
+		if (settings == null)
 		{
-			BotUtils.sendMessageToChannel(channel, "You have to mention at least one player");
+			event.getHook().sendMessage("No siege settings configured for this guild").queue();
 			return;
 		}
-
-		if (!PermissionChecker.checkGeneralPermissions(event))
-			return;
 		
 		SiegeInstance siegeInst = GuildManager.getInstance().getSiegeInstance(guild.getIdLong());
 		if (siegeInst == null)
 		{
-			BotUtils.sendMessageToChannel(channel, "Active siege is not found for current guild");
+			event.getHook().sendMessage("Active siege is not found for current guild").queue();
 			return;
 		}
-		
-		List<String> mentionedStr = args.stream()
-				.map(
-					(memberStr) -> memberStr.substring(3, (memberStr.length() - 1))
-				).collect(Collectors.toList());
-		
-		for (String member : mentionedStr)
-		{
-			try
-			{
-				Long memberId = Long.parseLong(member);
-				siegeInst.removePlayer(memberId);
-			}
-			catch (NumberFormatException ex) {}
-		}
 
-		BotUtils.sendMessageToChannel(channel, "Player(s) successfully removed");
-	}
+		List<OptionMapping> opts = event.getOptions();
+		opts.get(0).getMentions().getMembers().forEach(
+				(member) -> siegeInst.removePlayer(member.getIdLong())
+		);
 
-	@Override
-	public String getHelp()
-	{
-		return "Forcely remove player(s) from participants list\n" + 
-				"Usage: `" + Constants.PREFIX + this.getInvoke() + " <@player1> <@player2> ...`";
+		event.getHook().sendMessage("Player(s) successfully removed").queue();
 	}
 
 	@Override

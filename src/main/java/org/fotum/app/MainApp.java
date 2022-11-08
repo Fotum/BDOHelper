@@ -3,57 +3,70 @@ package org.fotum.app;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Activity;
-import net.dv8tion.jda.api.sharding.DefaultShardManager;
+import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
+import net.dv8tion.jda.api.sharding.ShardManager;
+import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.fotum.app.config.Config;
 
-import java.awt.*;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Random;
+import java.util.EnumSet;
 
 // #TODO: Начать документировать и комментировать код
 /**
- * 
- * 
+ *
+ *
  * @author Fotum
  *
  */
 @Slf4j
 public class MainApp
 {
-	private static final Random RANDOM = new Random();
+    private static ShardManager shardManager = null;
 
-	private static void initApp() throws IOException
-	{
-		Config config = Config.getInstance();
-
-		CommandManager commandManager = new CommandManager();
-		Listener listener = new Listener(commandManager);
-
-		log.info("Booting");
-		Constants.initConstants();
-
-		DefaultShardManager shardManager = new DefaultShardManager(config.getString("token"));
-		shardManager.setActivity(Activity.playing("Black Desert Online"));
-		shardManager.setStatus(OnlineStatus.ONLINE);
-		shardManager.addEventListener(listener);
-		shardManager.start(0);
-
-		log.info("Running");
+	public static void main(String... args)
+    {
+		shardManager = new MainApp().initApp();
 	}
 
-	public static void main(String... args) throws IOException
-	{
-		MainApp.initApp();
-	}
+	public static ShardManager getAPI()
+    {
+        return shardManager;
+    }
 
-	public static Color getRandomColor()
-	{
-		float r = RANDOM.nextFloat();
-		float g = RANDOM.nextFloat();
-		float b = RANDOM.nextFloat();
+	private MainApp() {}
 
-		return new Color(r, g, b);
-	}
+    private ShardManager initApp()
+    {
+        log.info("Booting");
+
+        Config config = Config.getInstance();
+
+        CommandManager commandManager = new CommandManager();
+        Listener listener = new Listener(commandManager);
+        Constants.initConstants();
+
+        EnumSet<GatewayIntent> intents = EnumSet.of(
+                GatewayIntent.GUILD_MEMBERS,
+                GatewayIntent.GUILD_PRESENCES,
+                GatewayIntent.GUILD_MESSAGES,
+                GatewayIntent.DIRECT_MESSAGES,
+                GatewayIntent.GUILD_VOICE_STATES,
+                GatewayIntent.MESSAGE_CONTENT
+        );
+
+        DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.create(config.getString("token_prod"), intents);
+        builder//.setActivity(Activity.playing("Black Desert Online"))
+                .setActivity(Activity.watching("you not going to siege"))
+                .setStatus(OnlineStatus.ONLINE)
+                .addEventListeners(listener)
+                .disableCache(
+                    CacheFlag.EMOJI,
+                    CacheFlag.ACTIVITY,
+                    CacheFlag.STICKER,
+                    CacheFlag.SCHEDULED_EVENTS
+                );
+
+        log.info("Finished booting");
+        return builder.build();
+    }
 }

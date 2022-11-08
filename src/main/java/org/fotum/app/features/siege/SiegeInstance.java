@@ -1,5 +1,17 @@
 package org.fotum.app.features.siege;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.Synchronized;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import org.fotum.app.utils.BotUtils;
+import org.fotum.app.utils.DiscordObjectsGetters;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
@@ -7,23 +19,11 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import lombok.Setter;
-import net.dv8tion.jda.api.entities.*;
-import org.fotum.app.MainApp;
-
-import lombok.Getter;
-import lombok.Synchronized;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.exceptions.ErrorHandler;
-import net.dv8tion.jda.api.requests.ErrorResponse;
-import org.fotum.app.utils.BotUtils;
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 public class SiegeInstance extends Thread
 {
-	private boolean isRunning = false;
 	private final GuildSettings settings;
+
+	private boolean isRunning = false;
 
 	@Getter @Setter
 	private LocalDate startDt;
@@ -31,25 +31,26 @@ public class SiegeInstance extends Thread
 	private String zone;
 	@Setter
 	private int playersMax;
-
 	private String titleMessage;
 	@Setter
 	private String descriptionMessage;
-	private Long announcerDelay;
 
-	private Set<Long> registredPlayers;
+	private long siegeAnnounceMsgId;
+	private long messageMentionId;
+	private final long channelId;
+	private final long guildId;
+
+	private final Set<Long> registredPlayers;
 	private Set<Long> latePlayers;
 
-	private Guild guild;
 	private TextChannel channel;
-	private Message siegeAnnounceMsg;
-	private Message messageMention;
-	private EmbedBuilder eBuilder;
+	private Guild guild;
+	private final EmbedBuilder eBuilder;
 
-	public SiegeInstance(Guild guild, TextChannel channel, LocalDate startDt, String zone, int playersMax)
+	public SiegeInstance(long guildId, long channelId, LocalDate startDt, String zone, int playersMax)
 	{
-		this.guild = guild;
-		this.channel = channel;
+		this.guildId = guildId;
+		this.channelId = channelId;
 		this.startDt = startDt;
 		this.zone = zone;
 		this.playersMax = playersMax;
@@ -57,23 +58,22 @@ public class SiegeInstance extends Thread
 		String dayOfWeek = this.startDt.getDayOfWeek().getDisplayName(TextStyle.FULL, new Locale("ru"));
 		String dateStr = this.startDt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
 
-		this.announcerDelay = 5L;
 		this.titleMessage = String.format("Осада %s (%s) на канале - %s 1", dateStr, dayOfWeek, this.zone);
-		this.descriptionMessage = "Взять с собой Топор трины +18, Карки и Гиганты. Оставляйте заявки на осаду: \"+\"";
-		this.siegeAnnounceMsg = null;
-		this.messageMention = null;
+		this.descriptionMessage = "Взять с собой ловушки, банки, топоры Трины, китовки, гиганты, колбы, пвп и пве обеды на свап и т.д.";
+		this.siegeAnnounceMsgId = 0L;
+		this.messageMentionId = 0L;
 
-		this.registredPlayers = new LinkedHashSet<Long>();
-		this.latePlayers = new LinkedHashSet<Long>();
-		this.eBuilder = new EmbedBuilder().setColor(MainApp.getRandomColor());
-		this.settings = GuildManager.getInstance().getGuildSettings(this.guild.getIdLong());
+		this.registredPlayers = new LinkedHashSet<>();
+		this.latePlayers = new LinkedHashSet<>();
+		this.eBuilder = new EmbedBuilder().setColor(BotUtils.getRandomColor());
+		this.settings = GuildManager.getInstance().getGuildSettings(guildId);
 	}
 
-	public SiegeInstance(Guild guild, TextChannel channel, JSONObject instance)
+	public SiegeInstance(long guildId, JSONObject instance)
 	{
 		this(
-			guild,
-			channel,
+			guildId,
+			instance.getLong("channel_id"),
 			LocalDate.parse(instance.getString("start_dt"), DateTimeFormatter.ofPattern("dd.MM.yyyy")),
 			instance.getString("zone"),
 			instance.getInt("players_max")
@@ -99,15 +99,18 @@ public class SiegeInstance extends Thread
 	public void run()
 	{
 		this.isRunning = true;
-		this.generateAndSendMentionMessage();
 
-		while (isRunning)
+		while (this.isRunning)
 		{
-			this.generateAndSendSiegeEmbed();
-
 			try
 			{
-				TimeUnit.SECONDS.sleep(announcerDelay);
+				if (this.initApiObjects())
+				{
+					this.generateAndSendMentionMessage();
+					this.generateAndSendSiegeEmbed();
+				}
+
+				TimeUnit.SECONDS.sleep(10L);
 			}
 			catch (InterruptedException ex)
 			{
@@ -131,11 +134,13 @@ public class SiegeInstance extends Thread
 
 		this.isRunning = false;
 
-		if (this.messageMention != null)
-			this.messageMention.delete().complete();
+		Message messageMention = DiscordObjectsGetters.getMessageById(this.channelId, this.messageMentionId);
+		if (messageMention != null)
+			messageMention.delete().complete();
 
-		if (this.siegeAnnounceMsg != null)
-			this.siegeAnnounceMsg.delete().complete();
+		Message siegeAnnounceMsg = DiscordObjectsGetters.getMessageById(this.channelId, this.siegeAnnounceMsgId);
+		if (siegeAnnounceMsg != null)
+			siegeAnnounceMsg.delete().complete();
 	}
 
 	@Synchronized
@@ -164,7 +169,7 @@ public class SiegeInstance extends Thread
 				this.registredPlayers.add(lateId);
 				latePlayersIter.remove();
 
-				User userToNotify = this.guild.getMemberById(lateId).getUser();
+				User userToNotify = DiscordObjectsGetters.getUserById(lateId);
 				BotUtils.sendDirectMessage(userToNotify, String.format("Для Вас появился слот на осаду и вы были перенесены в список участников.\r\n" +
 						"Ждем Вас на осаде **%s (%s)**.",
 						this.startDt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
@@ -206,8 +211,8 @@ public class SiegeInstance extends Thread
 		// If registred > max players then add players from registred list to late ones
 		else if (diff < 0)
 		{
-			LinkedHashSet<Long> tmpLate = new LinkedHashSet<Long>();
-			ArrayList<Long> asArray = new ArrayList<Long>(this.registredPlayers);
+			LinkedHashSet<Long> tmpLate = new LinkedHashSet<>();
+			ArrayList<Long> asArray = new ArrayList<>(this.registredPlayers);
 			Collections.reverse(asArray);
 
 			for (int i = 0; i < Math.abs(diff); i++)
@@ -226,6 +231,7 @@ public class SiegeInstance extends Thread
 	{
 		JSONObject instance = new JSONObject();
 
+		instance.put("channel_id", this.channelId);
 		instance.put("start_dt", this.startDt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
 		instance.put("zone", this.zone);
 		instance.put("players_max", this.playersMax);
@@ -240,22 +246,23 @@ public class SiegeInstance extends Thread
 	private void generateAndSendMentionMessage()
 	{
 		// Sending mention to announce new instance
-		if (!this.settings.getMentionRoles().isEmpty())
+		if (!this.settings.getMentionRoles().isEmpty() && this.messageMentionId == 0L)
 		{
 			StringBuilder rolesToMention = new StringBuilder();
-			for (long roleId : this.settings.getMentionRoles())
+			Iterator<Long> mentionIter = this.settings.getMentionRoles().iterator();
+			while (mentionIter.hasNext())
 			{
-				Role toAdd = this.guild.getRoleById(roleId);
+				Role toAdd = this.guild.getRoleById(mentionIter.next());
 				if (toAdd != null)
-				{
 					rolesToMention.append(toAdd.getAsMention());
-				}
+				else
+					mentionIter.remove();
 			}
 
 			if (rolesToMention.length() != 0)
 			{
 				this.channel.sendMessage(rolesToMention.toString()).queue(
-						(message) -> this.messageMention = message
+						(message) -> this.messageMentionId = message.getIdLong()
 				);
 			}
 		}
@@ -263,48 +270,74 @@ public class SiegeInstance extends Thread
 
 	private void generateAndSendSiegeEmbed()
 	{
-		int slotsRemain = playersMax - registredPlayers.size();
+		// Конвертируем айдишники в объекты класса Member
+		Set<Member> registredMembers = this.convertToMembers(this.registredPlayers);
+		Set<Member> lateMembers = this.convertToMembers(this.latePlayers);
+		// Конвертируем айдишники в объекты класса Role
+		Set<Role> prefixRoles = this.convertToRoles(this.settings.getPrefixRoles());
 
+		int slotsRemain = this.playersMax - registredMembers.size();
+
+		// Устанавливаем основные параметры эмбеда
 		this.eBuilder.setTitle(this.titleMessage);
 		this.eBuilder.setDescription(this.descriptionMessage);
 		this.eBuilder.clearFields();
-		this.eBuilder.addField("Плюсов на осаду", String.valueOf(this.registredPlayers.size()), true);
+		this.eBuilder.addField("Плюсов на осаду", String.valueOf(registredMembers.size()), true);
 		this.eBuilder.addField("Осталось слотов", String.valueOf(slotsRemain), true);
 		this.eBuilder.addBlankField(true);
 
-		for (Long roleId : this.settings.getPrefixRoles())
+		// Итерируемся по префикс ролям (заголовки полей) и создаем поле эмбеда
+		// со списком участников, которые имеют роль prefixRole
+		for (Role role : prefixRoles)
 		{
-			Role prefixRole = this.guild.getRoleById(roleId);
-			String fieldText = this.convertPlayersSetByRole(this.registredPlayers, prefixRole);
+			String fieldText = registredMembers.stream()
+					.filter((member) -> member.getRoles().contains(role))
+					.map((member) -> String.format("%s", member.getAsMention()))
+					.collect(Collectors.joining("\n"));
+
 			if (!fieldText.isEmpty())
-				this.addFieldToEmbed(this.eBuilder, prefixRole.getName(), fieldText, true);
+				this.addFieldToEmbed(this.eBuilder, role.getName(), fieldText, true);
 		}
 
-		String noRoleList = this.convertPlayersWithoutRole(this.registredPlayers);
+		// Генерируем список мемберов без префиксных ролей
+		String noRoleList = registredMembers.stream()
+				.filter((member) -> Collections.disjoint(member.getRoles(), prefixRoles))
+				.map((member) -> String.format("%s", member.getAsMention()))
+				.collect(Collectors.joining("\n"));
+
 		if (!noRoleList.isEmpty())
 			this.addFieldToEmbed(this.eBuilder, "Без роли", noRoleList, true);
 
-		String lateList = this.latePlayers.stream()
-				.map(
-						(memberId) -> String.format("%s", this.guild.getMemberById(memberId).getAsMention())
-				).collect(Collectors.joining("\n"));
+		// Генерируем лист опоздашек
+		String lateList = lateMembers.stream()
+				.map((member) -> String.format("%s", member.getAsMention()))
+				.collect(Collectors.joining("\n"));
 
 		if (!lateList.isEmpty())
 			this.addFieldToEmbed(this.eBuilder, "Опоздашки", lateList, true);
 
-		if (this.siegeAnnounceMsg != null)
+		// Получаем сообщение об осаде. Если сообщения не существует, то отправляем новое
+		// Если сообщение существует, то редактируем его
+		Message siegeAnnounceMsg = DiscordObjectsGetters.getMessageById(this.channelId, this.siegeAnnounceMsgId);
+		if (siegeAnnounceMsg != null)
 		{
-			this.siegeAnnounceMsg
-					.editMessage(eBuilder.build())
-					.queue(null, new ErrorHandler()
-							.handle(ErrorResponse.UNKNOWN_MESSAGE, (ex) -> this.siegeAnnounceMsg = null)
-					);
+			siegeAnnounceMsg
+				.editMessageEmbeds(this.eBuilder.build())
+				.queue();
 		}
 		else
 		{
-			this.channel.sendMessage(eBuilder.build()).queue(
-					(message) -> this.siegeAnnounceMsg = message
-			);
+			this.channel.sendMessageEmbeds(this.eBuilder.build())
+				.setActionRow(
+					Button.success("button-plus", "➕"),
+					Button.danger("button-minus", "➖"),
+					// HEAP TeamSpeak 3
+//					Button.link("https://invite.teamspeak.com/176.31.211.104/?port=9500", "TeamSpeak 3"))
+					// p2w TeamSpeak 3
+					Button.link("https://invite.teamspeak.com/dragonel", "TeamSpeak 3"))
+				.queue(
+					(message) -> this.siegeAnnounceMsgId = message.getIdLong()
+				);
 		}
 	}
 
@@ -324,7 +357,7 @@ public class SiegeInstance extends Thread
 				if (strLen > MessageEmbed.VALUE_MAX_LENGTH)
 					subListStart = i - 1;
 			}
-			
+
 			builder.addField(fieldNm, String.join("\n", tmpVal.subList(0, subListStart)), inline);
 			this.addFieldToEmbed(builder, "", String.join("\n", tmpVal.subList(subListStart, tmpVal.size())), inline);
 		}
@@ -334,41 +367,45 @@ public class SiegeInstance extends Thread
 		}
 	}
 
-	private String convertPlayersSetByRole(Set<Long> playersSet, Role role)
+	private Set<Member> convertToMembers(Set<Long> memberIds)
 	{
-		List<Member> members = playersSet.stream()
-								.map(this.guild::getMemberById)
-								.collect(Collectors.toList());
+		Set<Member> result = new LinkedHashSet<>();
 
-		return members.stream()
-					.filter(
-						(member) -> {
-							List<Role> memberRoles = member.getRoles();
-							return memberRoles.contains(role);
-						}
-					).map(
-						(member) -> String.format("%s", member.getAsMention())
-					).collect(Collectors.joining("\n"));
+		Iterator<Long> memberIdsIter = memberIds.iterator();
+		while (memberIdsIter.hasNext())
+		{
+			Member member = this.guild.getMemberById(memberIdsIter.next());
+			if (member != null)
+				result.add(member);
+			else
+				memberIdsIter.remove();
+		}
+
+		return result;
 	}
 
-	private String convertPlayersWithoutRole(Set<Long> playersSet)
+	private Set<Role> convertToRoles(Set<Long> roleIds)
 	{
-		List<Role> prefixes = settings.getPrefixRoles()
-								.stream()
-								.map(this.guild::getRoleById)
-								.collect(Collectors.toList());
-		List<Member> members = playersSet.stream()
-								.map(this.guild::getMemberById)
-								.collect(Collectors.toList());
+		Set<Role> result = new LinkedHashSet<>();
 
-		return members.stream()
-					.filter(
-						(member) -> {
-							List<Role> memberRoles = member.getRoles();
-							return memberRoles.stream().noneMatch(prefixes::contains);
-						}
-					).map(
-						(member) -> String.format("%s", member.getAsMention())
-					).collect(Collectors.joining("\n"));
+		Iterator<Long> roleIdsIter = roleIds.iterator();
+		while (roleIdsIter.hasNext())
+		{
+			Role role = this.guild.getRoleById(roleIdsIter.next());
+			if (role != null)
+				result.add(role);
+			else
+				roleIdsIter.remove();
+		}
+
+		return result;
+	}
+
+	private boolean initApiObjects()
+	{
+		this.guild = DiscordObjectsGetters.getGuildById(this.guildId);
+		this.channel = DiscordObjectsGetters.getTextChannelById(this.channelId);
+
+		return !Objects.isNull(this.guild) && !Objects.isNull(this.channel);
 	}
 }

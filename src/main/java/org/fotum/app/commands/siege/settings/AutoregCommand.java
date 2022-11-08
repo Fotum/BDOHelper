@@ -1,42 +1,50 @@
 package org.fotum.app.commands.siege.settings;
 
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.ISnowflake;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
-import org.fotum.app.Constants;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.fotum.app.features.siege.GuildManager;
 import org.fotum.app.features.siege.GuildSettings;
+import org.fotum.app.interfaces.ISlashCommand;
 import org.fotum.app.utils.BotUtils;
-import org.fotum.app.objects.EmbedCreator;
-import org.fotum.app.objects.ICommand;
-import org.fotum.app.objects.checkers.PermissionChecker;
 
+import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class AutoregCommand implements ICommand
+public class AutoregCommand implements ISlashCommand
 {
 
     @Override
-    public void handle(List<String> args, GuildMessageReceivedEvent event)
+    public void handle(SlashCommandInteractionEvent event)
     {
-        if (args.isEmpty())
+        event.deferReply(true).queue();
+
+        Guild guild = event.getGuild();
+        GuildManager manager = GuildManager.getInstance();
+        GuildSettings settings = manager.getGuildSettings(guild.getIdLong());
+
+        if (settings == null)
         {
-            BotUtils.sendMessageToChannel(event.getChannel(), "Incorrect number of arguments given");
+            event.getHook().sendMessage("No siege settings configured for this guild").queue();
             return;
         }
 
-        switch (args.remove(0).toLowerCase())
+        String action = event.getOption("action").getAsString().toLowerCase(Locale.ROOT);
+        switch (action)
         {
             case ("add"):
-                this.addAutoregPlayers(args, event);
+                this.addAutoregPlayers(event.getOption("members"), event);
                 break;
 
             case ("rem"):
-                this.remAutoregPlayers(args, event);
+                this.remAutoregPlayers(event.getOption("members"), event);
                 break;
 
             case ("list"):
@@ -44,17 +52,9 @@ public class AutoregCommand implements ICommand
                 break;
 
             default:
-                BotUtils.sendMessageToChannel(event.getChannel(), "Incorrect parameters given");
+                event.getHook().sendMessage("Undefined action, only add/rem/list actions allowed").queue();
                 break;
         }
-    }
-
-    @Override
-    public String getHelp()
-    {
-        return "Adds player to autoreg list, players from this list will be " +
-                "automatically registed to upcoming sieges\n" +
-                "Usage: `" + Constants.PREFIX + this.getInvoke() + " [add/rem/list] <@player1>, <@player2> ...`";
     }
 
     @Override
@@ -63,86 +63,74 @@ public class AutoregCommand implements ICommand
         return "autoreg";
     }
 
-    private void addAutoregPlayers(List<String> args, GuildMessageReceivedEvent event)
+    private void addAutoregPlayers(OptionMapping opts, SlashCommandInteractionEvent event)
     {
-        if (!PermissionChecker.checkGeneralPermissions(event))
-            return;
-
-        TextChannel channel = event.getChannel();
-
-        if (args.size() < 1)
+        if (opts == null)
         {
-            BotUtils.sendMessageToChannel(channel, "Incorrect number of arguments given");
+            event.getHook().sendMessage("You have to specify at least one member mention to add").queue();
             return;
         }
 
         Long guildId = event.getGuild().getIdLong();
         List<Long> membersInList = GuildManager.getInstance().getGuildSettings(guildId).getAutoregList();
 
-        membersInList.addAll(
-                event.getMessage().getMentionedMembers().stream()
-                        .map(ISnowflake::getIdLong)
-                        .filter((member) -> !membersInList.contains(member))
-                        .collect(Collectors.toList())
-        );
+        List<Long> membersToAdd = opts.getMentions().getMembers()
+                .stream()
+                .map(ISnowflake::getIdLong)
+                .filter((memberId) -> !membersInList.contains(memberId))
+                .collect(Collectors.toList());
 
-        BotUtils.sendMessageToChannel(channel, "Successfully added players to autoreg list");
+        membersInList.addAll(membersToAdd);
+        event.getHook().sendMessage("Successfully added players to autoreg list").queue();
     }
 
-    private void remAutoregPlayers(List<String> args, GuildMessageReceivedEvent event)
+    private void remAutoregPlayers(OptionMapping opts, SlashCommandInteractionEvent event)
     {
-        if (!PermissionChecker.checkGeneralPermissions(event))
-            return;
-
-        TextChannel channel = event.getChannel();
-
-        if (args.size() < 1)
+        if (opts == null)
         {
-            BotUtils.sendMessageToChannel(channel, "Incorrect number of arguments given");
+            event.getHook().sendMessage("You have to specify at least one member mention to remove").queue();
             return;
         }
 
         Long guildId = event.getGuild().getIdLong();
         List<Long> membersInList = GuildManager.getInstance().getGuildSettings(guildId).getAutoregList();
 
-        membersInList.removeAll(
-                event.getMessage().getMentionedMembers().stream()
-                    .map(ISnowflake::getIdLong)
-                    .collect(Collectors.toList())
-        );
+        List<Long> membersToRemove = opts.getMentions().getMembers().stream()
+                .map(ISnowflake::getIdLong)
+                .filter(membersInList::contains)
+                .collect(Collectors.toList());
 
-        BotUtils.sendMessageToChannel(channel, "Successfully removed players from autoreg list");
+        membersInList.removeAll(membersToRemove);
+
+        event.getHook().sendMessage("Successfully removed players from autoreg list").queue();
     }
 
-    private void listAutoregPlayers(GuildMessageReceivedEvent event)
+    private void listAutoregPlayers(SlashCommandInteractionEvent event)
     {
         Guild guild = event.getGuild();
-        TextChannel channel = event.getChannel();
+        TextChannel channel = event.getChannel().asTextChannel();
         GuildManager manager = GuildManager.getInstance();
-        GuildSettings settings = manager.getGuildSettings(guild.getIdLong());
 
-        if (guild.getSelfMember().hasPermission(Permission.MESSAGE_MANAGE))
+        if (Objects.isNull(manager.getGuildSettings(guild.getIdLong())))
         {
-            event.getMessage().delete().queue();
-        }
-
-        if (settings == null)
-        {
-            BotUtils.sendMessageToChannel(channel, "No siege settings configured for this guild");
+            event.getHook().sendMessage("No siege settings configured for this guild").queue();
             return;
         }
 
-
-        EmbedBuilder builder = EmbedCreator.getDefault().setTitle("A list of autoreg players:");
+        EmbedBuilder builder = BotUtils.getDefault().setTitle("A list of autoreg players:");
         StringBuilder descriptionBuilder = builder.getDescriptionBuilder();
 
-        manager.getGuildSettings(guild.getIdLong()).getAutoregList().stream()
-                .map(guild::getMemberById)
-                .forEach(
-                    (member) -> descriptionBuilder.append(member.getAsMention()).append("\n")
-                );
+        Iterator<Long> autoregListIter = manager.getGuildSettings(guild.getIdLong()).getAutoregList().iterator();
+        while (autoregListIter.hasNext())
+        {
+            Member member = guild.getMemberById(autoregListIter.next());
+            if (!Objects.isNull(member))
+                descriptionBuilder.append(member.getAsMention()).append("\n");
+            else
+                autoregListIter.remove();
+        }
 
-        channel.sendMessage(builder.build()).queue();
-        builder.clear();
+        channel.sendMessageEmbeds(builder.build()).queue();
+        event.getHook().sendMessage("Done!").queue();
     }
 }

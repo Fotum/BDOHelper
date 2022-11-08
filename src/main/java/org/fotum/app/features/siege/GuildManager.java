@@ -1,7 +1,8 @@
 package org.fotum.app.features.siege;
 
 import lombok.Getter;
-import lombok.Setter;
+import org.fotum.app.features.audio.handlers.ChannelVoiceRecorder;
+import org.fotum.app.features.vkfeed.VkCaller;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -9,18 +10,35 @@ import java.util.Map;
 public class GuildManager
 {
 	private static GuildManager INSTANCE = null;
-	private GuildManagerDaemon schedDaemon;
+	private final GuildManagerDaemon schedDaemon;
 
 	@Getter
-	private Map<Long, SiegeInstance> siegeInstances = new HashMap<Long, SiegeInstance>();
-	@Getter @Setter
-	private Map<Long, GuildSettings> guildSettings = new HashMap<Long, GuildSettings>();
+	private final Map<Long, SiegeInstance> siegeInstances = new HashMap<>();
+	@Getter
+	private final Map<Long, GuildSettings> guildSettings = new HashMap<>();
+	@Getter
+	private final Map<Long, VkCaller> vkCallers = new HashMap<>();
+	@Getter
+	private final Map<Long, ChannelVoiceRecorder> voiceRecorders = new HashMap<>();
 
 	private GuildManager()
 	{
 		schedDaemon = new GuildManagerDaemon(this);
 		schedDaemon.setDaemon(true);
 		schedDaemon.start();
+	}
+
+	public void addGuildSettings(Long guildId, GuildSettings settings)
+	{
+		if (!this.guildSettings.containsKey(guildId))
+		{
+			this.guildSettings.put(guildId, settings);
+		}
+	}
+
+	public GuildSettings getGuildSettings(Long guildId)
+	{
+		return this.guildSettings.get(guildId);
 	}
 
 	public void addSiegeInstance(Long guildId, SiegeInstance siegeInst)
@@ -34,11 +52,7 @@ public class GuildManager
 
 	public SiegeInstance getSiegeInstance(Long guildId)
 	{
-		SiegeInstance result = null;
-		if (this.siegeInstances.containsKey(guildId))
-			result = this.siegeInstances.get(guildId);
-		
-		return result;
+		return this.siegeInstances.get(guildId);
 	}
 
 	public void removeSiegeInstance(Long guildId)
@@ -50,38 +64,42 @@ public class GuildManager
 		}
 	}
 
-	public void addGuildSettings(Long guildId, GuildSettings settings)
+	public void addVkCaller(Long guildId, VkCaller caller)
 	{
-		if (!this.guildSettings.containsKey(guildId))
+		if (!this.vkCallers.containsKey(guildId))
 		{
-			this.guildSettings.put(guildId, settings);
+			this.vkCallers.put(guildId, caller);
+			caller.start();
 		}
 	}
 
-	public GuildSettings getGuildSettings(Long guildId)
+	public VkCaller getVkCaller(Long guildId)
 	{
-		GuildSettings result = null;
-		if (this.guildSettings.containsKey(guildId))
-			result = this.guildSettings.get(guildId);
+		return this.vkCallers.get(guildId);
+	}
 
-		return result;
-	}
-	
-	public void startDaemon()
+	public void removeVkCaller(Long guildId)
 	{
-		if (this.schedDaemon == null)
-			this.schedDaemon = new GuildManagerDaemon(this);
-	
-		if (!this.schedDaemon.isAlive())
-			this.schedDaemon.start();
+		if (this.vkCallers.containsKey(guildId))
+		{
+			this.vkCallers.get(guildId).stopVkCaller();
+			this.vkCallers.remove(guildId);
+		}
 	}
-	
-	public void stopDaemon()
+
+	public void addVoiceRecorder(Long guildId, ChannelVoiceRecorder recorder)
 	{
-		if (this.schedDaemon != null && this.schedDaemon.isAlive())
-			this.schedDaemon.stopDaemon();
-		
-		this.schedDaemon = null;
+		if (!this.voiceRecorders.containsKey(guildId))
+			this.voiceRecorders.put(guildId, recorder);
+	}
+
+	public void removeVoiceRecorder(Long guildId)
+	{
+		if (this.voiceRecorders.containsKey(guildId))
+		{
+			this.voiceRecorders.get(guildId).finish();
+			this.voiceRecorders.remove(guildId);
+		}
 	}
 
 	public static GuildManager getInstance()

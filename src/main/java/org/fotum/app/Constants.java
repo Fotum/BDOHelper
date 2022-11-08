@@ -9,20 +9,21 @@ public class Constants
 	public static final HashMap<String, String> ZONES;
 	static
 	{
-		ZONES = new HashMap<String, String>();
+		ZONES = new HashMap<>();
 		ZONES.put("tbd", "Неизвестно");
 		ZONES.put("bal", "Баленос");
 		ZONES.put("val", "Валенсия");
 		ZONES.put("ser", "Серендия");
 		ZONES.put("kal", "Кальфеон");
 		ZONES.put("med", "Медия");
+		ZONES.put("kam", "Камасильвия");
 	}
 
 	public static final String PREFIX = "~";
 	public static final long OWNER = <OWNER_ID>;
 	public static final String SETTINGS_LOC = System.getProperty("user.dir") + File.separator + "settings";
 	public static final String GUILD_SETTINGS_LOC = Constants.SETTINGS_LOC + File.separator + "guild_settings.json";
-	
+
 	static void initConstants()
 	{
 		// Create settings dir if not exists

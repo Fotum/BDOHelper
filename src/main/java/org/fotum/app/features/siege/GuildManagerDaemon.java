@@ -12,8 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GuildManagerDaemon extends Thread
 {
-	private boolean isRunning;
-	private GuildManager manager;
+	private final GuildManager manager;
 	
 	public GuildManagerDaemon(GuildManager manager)
 	{
@@ -24,9 +23,9 @@ public class GuildManagerDaemon extends Thread
 	@Override
 	public void run()
 	{
-		this.isRunning = true;
+		boolean isRunning = true;
 		
-		while (this.isRunning)
+		while (isRunning)
 		{
 			Map<Long, SiegeInstance> instances = manager.getSiegeInstances();
 			for (Entry<Long, SiegeInstance> instEntry : instances.entrySet())
@@ -53,18 +52,13 @@ public class GuildManagerDaemon extends Thread
 			
 			try
 			{
-				TimeUnit.MINUTES.sleep(1L);
+				TimeUnit.MINUTES.sleep(5L);
 			}
 			catch (InterruptedException ex)
 			{
 				ex.printStackTrace();
-				this.isRunning = false;
+				isRunning = false;
 			}
 		}
-	}
-	
-	public synchronized void stopDaemon()
-	{
-		this.isRunning = false;
 	}
 }

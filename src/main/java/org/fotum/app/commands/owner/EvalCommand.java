@@ -1,13 +1,13 @@
 package org.fotum.app.commands.owner;
 
 import groovy.lang.GroovyShell;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.fotum.app.Constants;
-import org.fotum.app.objects.ICommand;
+import org.fotum.app.interfaces.ITextCommand;
 
 import java.util.List;
 
-public class EvalCommand implements ICommand
+public class EvalCommand implements ITextCommand
 {
     private final GroovyShell engine;
     private final String imports;
@@ -28,7 +28,7 @@ public class EvalCommand implements ICommand
     }
 
     @Override
-    public void handle(List<String> args, GuildMessageReceivedEvent event)
+    public void handle(List<String> args, MessageReceivedEvent event)
     {
         if (event.getAuthor().getIdLong() != Constants.OWNER)
         {
@@ -48,8 +48,6 @@ public class EvalCommand implements ICommand
             engine.setProperty("message", event.getMessage());
             engine.setProperty("channel", event.getChannel());
             engine.setProperty("jda", event.getJDA());
-            engine.setProperty("guild", event.getGuild());
-            engine.setProperty("member", event.getMember());
 
             String script = imports + event.getMessage().getContentRaw().split("\\s+", 2)[1];
             Object out = engine.evaluate(script);
@@ -72,5 +70,17 @@ public class EvalCommand implements ICommand
     public String getInvoke()
     {
         return "eval";
+    }
+
+    @Override
+    public boolean isVisible()
+    {
+        return false;
+    }
+
+    @Override
+    public boolean canBePrivate()
+    {
+        return true;
     }
 }
