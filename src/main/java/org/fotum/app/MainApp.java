@@ -9,7 +9,9 @@ import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.fotum.app.config.Config;
 
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.stream.Collectors;
 
 // #TODO: Начать документировать и комментировать код
 /**
@@ -50,20 +52,16 @@ public class MainApp
                 GatewayIntent.GUILD_PRESENCES,
                 GatewayIntent.GUILD_MESSAGES,
                 GatewayIntent.DIRECT_MESSAGES,
-                GatewayIntent.GUILD_VOICE_STATES,
                 GatewayIntent.MESSAGE_CONTENT
         );
 
         DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.create(config.getString("token_prod"), intents);
-        builder//.setActivity(Activity.playing("Black Desert Online"))
-                .setActivity(Activity.watching("you not going to siege"))
+        builder.setActivity(Activity.watching("you not going to siege"))
                 .setStatus(OnlineStatus.ONLINE)
                 .addEventListeners(listener)
                 .disableCache(
-                    CacheFlag.EMOJI,
-                    CacheFlag.ACTIVITY,
-                    CacheFlag.STICKER,
-                    CacheFlag.SCHEDULED_EVENTS
+                    Arrays.stream(CacheFlag.values())
+                            .collect(Collectors.toList())
                 );
 
         log.info("Finished booting");

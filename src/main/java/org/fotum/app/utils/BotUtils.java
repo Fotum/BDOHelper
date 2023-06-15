@@ -13,7 +13,6 @@ import org.fotum.app.MainApp;
 import org.fotum.app.features.siege.GuildManager;
 import org.fotum.app.features.siege.GuildSettings;
 import org.fotum.app.features.siege.SiegeInstance;
-import org.fotum.app.features.vkfeed.VkCaller;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -23,9 +22,11 @@ import java.awt.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -47,43 +48,93 @@ public class BotUtils
 		log.info("Upserting slash commands");
 		ShardManager api = MainApp.getAPI();
 		for (Guild guild : api.getGuilds())
-		{
-			guild.upsertCommand("setup", "Sets up or updates siege settings for current guild")
-					.addOption(OptionType.CHANNEL, "channel", "Channel mention (#channel_name) for announcments", false)
-					.addOption(OptionType.STRING, "mention_roles", "Roles to mention on announcement (Optional)", false)
-					.addOption(OptionType.STRING, "prefix_roles", "Roles to sort players in announcement's body (Optional)", false)
-					.queue();
-			guild.upsertCommand("addsiege", "Schedules a siege info on a given date")
-					.addOptions(
-							new OptionData(OptionType.STRING, "siege_dt", "Siege date in dd.mm.yyyy format", true),
-							new OptionData(OptionType.STRING, "game_channel", "One of predefined channel abbriviations", true),
-							new OptionData(OptionType.INTEGER, "slots", "Amount of free slots for this siege", true)
-									.setRequiredRange(1, 200))
-					.queue();
-			guild.upsertCommand("remsiege", "Removes currently scheduled siege")
-					.queue();
-			guild.upsertCommand("updsiege", "Updates current siege instance")
-					.addOption(OptionType.STRING, "field_nm", "Field to update date/zone/maxplrs/desc", true)
-					.addOption(OptionType.STRING, "field_val", "New value for selected field", true)
-					.queue();
-			guild.upsertCommand("forceadd", "Manually adds mentioned users to players list")
-					.addOption(OptionType.STRING, "players", "Players to add", true)
-					.queue();
-			guild.upsertCommand("forcerem", "Manually removes mentioned users from players list")
-					.addOption(OptionType.STRING, "players", "Players to remove", true)
-					.queue();
-			guild.upsertCommand("autoreg", "Sets up an autoreg options")
-					.addOption(OptionType.STRING, "action", "Action to be performed by command (add/rem/list)", true)
-					.addOption(OptionType.STRING, "members", "Members to be added or deleted", false)
-					.queue();
-			guild.upsertCommand("clear", "Deletes messages from current channel")
-					.addOptions(
-							new OptionData(OptionType.INTEGER, "amount", "Amount of messages to delete", true)
-									.setRequiredRange(1, 100))
-					.queue();
-		}
+			BotUtils.upsertBotCommands(guild);
 
 		log.info("Startup successfully finished");
+	}
+
+	public static void upsertBotCommands(Guild guild)
+	{
+		log.info(String.format("Upserting slash commands for guild with ID %d", guild.getIdLong()));
+
+		guild.upsertCommand("setup", "Sets up or updates siege settings for current guild")
+				.addOption(OptionType.CHANNEL, "channel", "Channel mention (#channel_name) for announcments", false)
+				.addOption(OptionType.STRING, "mention_roles", "Roles to mention on announcement (Optional)", false)
+				.queue();
+		guild.upsertCommand("addsiege", "Schedules a siege info on a given date")
+				.addOptions(
+						new OptionData(OptionType.STRING, "siege_dt", "Siege date in dd.mm.yyyy format", true),
+						new OptionData(OptionType.STRING, "game_channel", "One of predefined channel abbriviations", true)
+								.addChoice("Unknown", "Неизвестно")
+								.addChoice("Balenos", "Баленос")
+								.addChoice("Valencia", "Валенсия")
+								.addChoice("Serendia", "Серендия")
+								.addChoice("Calpheon", "Кальфеон")
+								.addChoice("Mediah", "Медия")
+								.addChoice("Kamasylvia", "Камасильвия"),
+						new OptionData(OptionType.INTEGER, "slots", "Amount of free slots for this siege", true)
+								.setRequiredRange(1, 200))
+				.queue();
+		guild.upsertCommand("remsiege", "Removes currently scheduled siege")
+				.addOption(OptionType.STRING, "siege_dt", "Date of the siege to be removed in dd.mm.yyyy format (if not specified all sieges will be removed)", false)
+				.queue();
+		guild.upsertCommand("updsiege", "Updates current siege instance")
+				.addOptions(
+						new OptionData(OptionType.STRING, "siege_dt", "Date of the siege to be updated in dd.mm.yyyy format", true),
+						new OptionData(OptionType.STRING, "field_nm", "Field to update", true)
+								.addChoice("Siege date in dd.mm.yyyy format", "date")
+								.addChoice("Siege zone", "zone")
+								.addChoice("Max slots", "maxplrs"),
+						new OptionData(OptionType.STRING, "field_val", "New value for selected field", true))
+				.queue();
+		guild.upsertCommand("forceadd", "Manually adds mentioned users to players list")
+				.addOption(OptionType.STRING, "siege_dt", "Date of the siege to add players in dd.mm.yyyy format", true)
+				.addOption(OptionType.STRING, "players", "Players to add", true)
+				.queue();
+		guild.upsertCommand("forcerem", "Manually removes mentioned users from players list")
+				.addOption(OptionType.STRING, "siege_dt", "Date of the siege to remove players in dd.mm.yyyy format", true)
+				.addOption(OptionType.STRING, "players", "Players to remove", true)
+				.queue();
+		guild.upsertCommand("autoreg", "Sets up an autoreg options")
+				.addOptions(
+						new OptionData(OptionType.STRING, "action", "Action to be performed by command", true)
+								.addChoice("Add player(s)", "add")
+								.addChoice("Remove player(s)", "rem")
+								.addChoice("Show autoreg players", "list"),
+						new OptionData(OptionType.STRING, "members", "Member(s) to be added or deleted", false))
+				.queue();
+		guild.upsertCommand("reguser", "Adds member's BDO info")
+				.addOptions(
+						new OptionData(OptionType.STRING, "bdo_name", "Your BDO family name", true),
+						new OptionData(OptionType.STRING, "bdo_allegiance", "Your BDO allegiance main or alliance (M/A)", true)
+								.addChoice("Main", "M")
+								.addChoice("Alliance", "A"))
+				.queue();
+		guild.upsertCommand("remuser", "Removes user's BDO info")
+				.queue();
+		guild.upsertCommand("forcereguser", "Manually adds BDO info for specified discord user")
+				.addOptions(
+						new OptionData(OptionType.USER, "discord_user", "Discord mention of player to map", true),
+						new OptionData(OptionType.STRING, "bdo_name", "BDO family name of player", true),
+						new OptionData(OptionType.STRING, "bdo_allegiance", "Player's BDO allegiance main or alliance (M/A)", true)
+								.addChoice("Main", "M")
+								.addChoice("Alliance", "A"))
+				.queue();
+		guild.upsertCommand("forceremuser", "Manually removes BDO info for specified discord user")
+				.addOption(OptionType.USER, "discord_user", "Discord mention of player to remove", true)
+				.queue();
+
+		guild.upsertCommand("clear", "Deletes messages from current channel")
+				.addOptions(
+						new OptionData(OptionType.INTEGER, "amount", "Amount of messages to delete", true)
+								.setRequiredRange(1, 100))
+				.queue();
+		guild.upsertCommand("tictactoe", "Starts TicTacToe game with selected user")
+				.addOptions(
+						new OptionData(OptionType.USER, "target", "Player with who you want to play", true),
+						new OptionData(OptionType.INTEGER, "size", "Board size (default is 3)", false)
+								.setRequiredRange(3, 4))
+				.queue();
 	}
 
 	public static void runShutdownSequence()
@@ -113,13 +164,25 @@ public class BotUtils
 				.queue();
 	}
 
+	public static LocalDate convertStrToDate(String strDate)
+	{
+		try
+		{
+			return LocalDate.parse(strDate, DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+		}
+		catch (DateTimeParseException ex)
+		{
+			return null;
+		}
+	}
+
 	protected static void shutdownInstances()
 	{
-		Map<Long, SiegeInstance> instances = GuildManager.getInstance().getSiegeInstances();
-
-		for (Long guildId : instances.keySet()) {
-			GuildManager.getInstance().getSiegeInstance(guildId).stopInstance();
-		}
+		GuildManager.getInstance().getSiegeInstances()
+				.values()
+				.stream()
+				.flatMap(Collection::stream)
+				.forEach(SiegeInstance::stopInstance);
 	}
 
 	protected static void saveSettingsToJSON()
@@ -133,32 +196,20 @@ public class BotUtils
 		for (Map.Entry<Long, GuildSettings> entry : settings.entrySet())
 		{
 			JSONObject guildInfo = new JSONObject();
-			guildInfo.put("id", entry.getKey());
 
 			// Creating guild settings JSON
 			JSONObject guildSettingsJson = entry.getValue().toJSON();
 
-			// Saving siege instance if exists
-			SiegeInstance siegeInstance = GuildManager.getInstance().getSiegeInstance(entry.getKey());
-			JSONObject siegeInstanceJson = new JSONObject();
+			// Saving siege instances if any
+			List<SiegeInstance> siegeInstances = GuildManager.getInstance().getGuildSiegeInstances(entry.getKey());
+			JSONArray siegeInstancesJson = new JSONArray();
+			for (SiegeInstance inst : siegeInstances)
+				siegeInstancesJson.put(inst.toJSON());
 
-			if (siegeInstance != null)
-			{
-				siegeInstanceJson = siegeInstance.toJSON();
-			}
-
-			// Saving VK caller if exists
-			VkCaller vkCaller = GuildManager.getInstance().getVkCaller(entry.getKey());
-			JSONObject vkCallerJson = new JSONObject();
-
-			if (vkCaller != null)
-			{
-				vkCallerJson = vkCaller.toJSON();
-			}
-
+			// Add fields to settings JSON
+			guildInfo.put("id", entry.getKey());
 			guildInfo.put("settings", guildSettingsJson);
-			guildInfo.put("siege_instance", siegeInstanceJson);
-			guildInfo.put("vk_caller", vkCallerJson);
+			guildInfo.put("siege_instances", siegeInstancesJson);
 			root.put(guildInfo);
 		}
 
@@ -202,19 +253,12 @@ public class BotUtils
 			GuildManager.getInstance().getGuildSettings().put(guildId, guildSettings);
 
 			// Load instances from JSON
-			JSONObject siegeInstanceJson = guildInfo.getJSONObject("siege_instance");
-			if (siegeInstanceJson.length() > 0)
+			JSONArray siegeInstancesJson = guildInfo.getJSONArray("siege_instances");
+			for (int j = 0; j < siegeInstancesJson.length(); j++)
 			{
-				SiegeInstance instance = new SiegeInstance(guildId, siegeInstanceJson);
-				GuildManager.getInstance().addSiegeInstance(guildId, instance);
-			}
-
-			// Load VK caller from JSON
-			JSONObject vkCallerJson = guildInfo.getJSONObject("vk_caller");
-			if (vkCallerJson.length() > 0)
-			{
-				VkCaller caller = new VkCaller(vkCallerJson);
-				GuildManager.getInstance().addVkCaller(guildId, caller);
+				JSONObject siegeInstanceJson = siegeInstancesJson.getJSONObject(j);
+				SiegeInstance siegeInstance = new SiegeInstance(guildId, siegeInstanceJson);
+				GuildManager.getInstance().addSiegeInstance(guildId, siegeInstance);
 			}
 		}
 	}

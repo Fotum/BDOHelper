@@ -14,7 +14,6 @@ import org.fotum.app.utils.BotUtils;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -36,7 +35,7 @@ public class AutoregCommand implements ISlashCommand
             return;
         }
 
-        String action = event.getOption("action").getAsString().toLowerCase(Locale.ROOT);
+        String action = event.getOption("action").getAsString();
         switch (action)
         {
             case ("add"):
@@ -108,14 +107,7 @@ public class AutoregCommand implements ISlashCommand
     private void listAutoregPlayers(SlashCommandInteractionEvent event)
     {
         Guild guild = event.getGuild();
-        TextChannel channel = event.getChannel().asTextChannel();
         GuildManager manager = GuildManager.getInstance();
-
-        if (Objects.isNull(manager.getGuildSettings(guild.getIdLong())))
-        {
-            event.getHook().sendMessage("No siege settings configured for this guild").queue();
-            return;
-        }
 
         EmbedBuilder builder = BotUtils.getDefault().setTitle("A list of autoreg players:");
         StringBuilder descriptionBuilder = builder.getDescriptionBuilder();
@@ -130,7 +122,6 @@ public class AutoregCommand implements ISlashCommand
                 autoregListIter.remove();
         }
 
-        channel.sendMessageEmbeds(builder.build()).queue();
-        event.getHook().sendMessage("Done!").queue();
+        event.getHook().sendMessageEmbeds(builder.build()).queue();
     }
 }

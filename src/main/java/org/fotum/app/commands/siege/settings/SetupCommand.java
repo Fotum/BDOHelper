@@ -10,8 +10,6 @@ import org.fotum.app.features.siege.GuildManager;
 import org.fotum.app.features.siege.GuildSettings;
 import org.fotum.app.interfaces.ISlashCommand;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -71,34 +69,17 @@ public class SetupCommand implements ISlashCommand
         {
             if (option.getAsString().equalsIgnoreCase("delete"))
             {
-                settings.setMentionRoles(new ArrayList<>());
+                settings.getMentionRoles().clear();
             }
             else
             {
                 List<Role> mentionRoles = option.getMentions().getRoles();
-                settings.setMentionRoles(
-                        mentionRoles.stream()
-                                .map(ISnowflake::getIdLong)
-                                .collect(Collectors.toList())
-                );
-            }
-        }
-
-        // Prefix roles
-        option = event.getOption("prefix_roles");
-        if (option != null)
-        {
-            if (option.getAsString().equalsIgnoreCase("delete"))
-            {
-                settings.setPrefixRoles(new LinkedHashSet<>());
-            }
-            else
-            {
-                List<Role> prefixRoles = option.getMentions().getRoles();
-                settings.setPrefixRoles(
-                        prefixRoles.stream()
-                                .map(ISnowflake::getIdLong)
-                                .collect(Collectors.toCollection(LinkedHashSet::new))
+                settings.getMentionRoles().clear();
+                settings.getMentionRoles()
+                        .addAll(
+                            mentionRoles.stream()
+                                    .map(ISnowflake::getIdLong)
+                                    .collect(Collectors.toList())
                 );
             }
         }

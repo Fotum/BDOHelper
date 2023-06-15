@@ -28,7 +28,7 @@ public class ShutdownCommand implements ITextCommand
     @Override
     public String getHelp()
     {
-        return "Shut's down bot application";
+        return "Shuts down bot application";
     }
 
     @Override

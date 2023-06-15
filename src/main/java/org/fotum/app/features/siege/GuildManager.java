@@ -1,31 +1,28 @@
 package org.fotum.app.features.siege;
 
 import lombok.Getter;
-import org.fotum.app.features.audio.handlers.ChannelVoiceRecorder;
-import org.fotum.app.features.vkfeed.VkCaller;
+import org.fotum.app.features.tictactoe.TicTacToeGame;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.*;
 
 public class GuildManager
 {
 	private static GuildManager INSTANCE = null;
-	private final GuildManagerDaemon schedDaemon;
+	private final TimeCheckerDaemon checkerDaemon;
 
 	@Getter
-	private final Map<Long, SiegeInstance> siegeInstances = new HashMap<>();
+	private final Map<Long, List<SiegeInstance>> siegeInstances = new HashMap<>();
 	@Getter
 	private final Map<Long, GuildSettings> guildSettings = new HashMap<>();
 	@Getter
-	private final Map<Long, VkCaller> vkCallers = new HashMap<>();
-	@Getter
-	private final Map<Long, ChannelVoiceRecorder> voiceRecorders = new HashMap<>();
+	private final List<TicTacToeGame> ticTacToeGames = new ArrayList<>();
 
 	private GuildManager()
 	{
-		schedDaemon = new GuildManagerDaemon(this);
-		schedDaemon.setDaemon(true);
-		schedDaemon.start();
+		this.checkerDaemon = new TimeCheckerDaemon(this);
+		this.checkerDaemon.setDaemon(true);
+		this.checkerDaemon.start();
 	}
 
 	public void addGuildSettings(Long guildId, GuildSettings settings)
@@ -44,62 +41,69 @@ public class GuildManager
 	public void addSiegeInstance(Long guildId, SiegeInstance siegeInst)
 	{
 		if (!this.siegeInstances.containsKey(guildId))
-		{
-			this.siegeInstances.put(guildId, siegeInst);
-			siegeInst.start();
-		}
+			this.siegeInstances.put(guildId, new ArrayList<>());
+
+		this.removeSiegeInstance(guildId, siegeInst.getStartDt());
+		this.siegeInstances.get(guildId).add(siegeInst);
+		siegeInst.start();
 	}
 
-	public SiegeInstance getSiegeInstance(Long guildId)
+	public List<SiegeInstance> getGuildSiegeInstances(Long guildId)
 	{
+		if (!this.siegeInstances.containsKey(guildId))
+			return new ArrayList<>();
+
 		return this.siegeInstances.get(guildId);
 	}
 
-	public void removeSiegeInstance(Long guildId)
+	public SiegeInstance getGuildSiegeInstance(Long guildId, LocalDate instDt)
 	{
-		if (this.siegeInstances.containsKey(guildId))
+		if (!this.siegeInstances.containsKey(guildId))
+			return null;
+
+		List<SiegeInstance> instances = this.siegeInstances.get(guildId);
+		return instances.stream()
+				.filter((inst) -> inst.getStartDt().isEqual(instDt))
+				.findFirst()
+				.orElse(null);
+	}
+
+	public void removeSiegeInstance(Long guildId, LocalDate instDt)
+	{
+		if (!this.siegeInstances.containsKey(guildId))
+			return;
+
+		List<SiegeInstance> instances = this.siegeInstances.get(guildId);
+		SiegeInstance oldOne = instances.stream()
+				.filter((inst) -> inst.getStartDt().isEqual(instDt))
+				.findFirst()
+				.orElse(null);
+
+		if (oldOne != null)
 		{
-			this.siegeInstances.get(guildId).stopInstance();
-			this.siegeInstances.remove(guildId);
+			oldOne.stopInstance();
+			instances.remove(oldOne);
 		}
 	}
 
-	public void addVkCaller(Long guildId, VkCaller caller)
+	public void removeAllGuildSiegeInstances(Long guildId)
 	{
-		if (!this.vkCallers.containsKey(guildId))
+		if (!this.siegeInstances.containsKey(guildId))
+			return;
+
+		List<SiegeInstance> instances = this.siegeInstances.get(guildId);
+		Iterator<SiegeInstance> instancesIter = instances.iterator();
+		while (instancesIter.hasNext())
 		{
-			this.vkCallers.put(guildId, caller);
-			caller.start();
+			SiegeInstance inst = instancesIter.next();
+			inst.stopInstance();
+			instancesIter.remove();
 		}
 	}
 
-	public VkCaller getVkCaller(Long guildId)
+	public void addTicTacToeGame(TicTacToeGame gameInstance)
 	{
-		return this.vkCallers.get(guildId);
-	}
-
-	public void removeVkCaller(Long guildId)
-	{
-		if (this.vkCallers.containsKey(guildId))
-		{
-			this.vkCallers.get(guildId).stopVkCaller();
-			this.vkCallers.remove(guildId);
-		}
-	}
-
-	public void addVoiceRecorder(Long guildId, ChannelVoiceRecorder recorder)
-	{
-		if (!this.voiceRecorders.containsKey(guildId))
-			this.voiceRecorders.put(guildId, recorder);
-	}
-
-	public void removeVoiceRecorder(Long guildId)
-	{
-		if (this.voiceRecorders.containsKey(guildId))
-		{
-			this.voiceRecorders.get(guildId).finish();
-			this.voiceRecorders.remove(guildId);
-		}
+		this.ticTacToeGames.add(gameInstance);
 	}
 
 	public static GuildManager getInstance()
@@ -112,7 +116,7 @@ public class GuildManager
 					INSTANCE = new GuildManager();
 			}
 		}
-		
+
 		return INSTANCE;
 	}
 }

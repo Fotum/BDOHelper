@@ -2,8 +2,6 @@ package org.fotum.app.commands.siege;
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.interactions.commands.OptionMapping;
-import org.fotum.app.Constants;
 import org.fotum.app.features.siege.GuildManager;
 import org.fotum.app.features.siege.GuildSettings;
 import org.fotum.app.features.siege.SiegeInstance;
@@ -12,7 +10,6 @@ import org.fotum.app.interfaces.ISlashCommand;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.List;
 
 public class AddSiegeCommand implements ISlashCommand
 {
@@ -38,11 +35,11 @@ public class AddSiegeCommand implements ISlashCommand
 			return;
 		}
 
-		List<OptionMapping> opts = event.getOptions();
 		LocalDate startDt;
+		String startDtStr = event.getOption("siege_dt").getAsString();
 		try
 		{
-			startDt = LocalDate.parse(opts.get(0).getAsString(), DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+			startDt = LocalDate.parse(startDtStr, DateTimeFormatter.ofPattern("dd.MM.yyyy"));
 		}
 		catch (DateTimeParseException ex)
 		{
@@ -56,22 +53,14 @@ public class AddSiegeCommand implements ISlashCommand
 			return;
 		}
 
-		String zone = Constants.ZONES.get(opts.get(1).getAsString().toLowerCase());
-		if (zone == null)
-		{
-			String correctZones = String.join(", ", Constants.ZONES.keySet());
-			event.getHook().sendMessage("Incorrect zone identifier given, expected one of the following: `[" + correctZones + "]`").queue();
-			return;
-		}
-
-		int playersAmount = opts.get(2).getAsInt();
+		String zone = event.getOption("game_channel").getAsString();
+		int playersAmount = event.getOption("slots").getAsInt();
 
 		// Creating new siege instance with given parameters
 		SiegeInstance siegeInst = new SiegeInstance(guild.getIdLong(), listeningChannelId, startDt, zone, playersAmount);
 		// If autoreg settings exist for this guild - add players to registred list
-		settings.getAutoregList().forEach(siegeInst::addPlayer);
+		settings.getAutoregList().forEach(siegeInst::registerPlayer);
 
-		manager.removeSiegeInstance(guild.getIdLong());
 		manager.addSiegeInstance(guild.getIdLong(), siegeInst);
 		event.getHook().sendMessage("Successfully complete").queue();
 	}

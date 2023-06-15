@@ -5,20 +5,21 @@ import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import org.fotum.app.commands.buttons.AddPlayerCommand;
-import org.fotum.app.commands.buttons.RemovePlayerCommand;
+import org.fotum.app.commands.siege.*;
+import org.fotum.app.commands.siege.buttons.AddPlayerCommand;
+import org.fotum.app.commands.siege.buttons.RemovePlayerCommand;
 import org.fotum.app.commands.moderation.ClearCommand;
 import org.fotum.app.commands.owner.*;
-import org.fotum.app.commands.siege.AddSiegeCommand;
-import org.fotum.app.commands.siege.ForceAddPlayersCommand;
-import org.fotum.app.commands.siege.ForceRemPlayersCommand;
-import org.fotum.app.commands.siege.RemoveSiegeCommand;
-import org.fotum.app.commands.siege.settings.AutoregCommand;
-import org.fotum.app.commands.siege.settings.SetupCommand;
-import org.fotum.app.commands.siege.settings.UpdateSiegeSettingsCommand;
+import org.fotum.app.commands.siege.settings.*;
+import org.fotum.app.commands.tictactoe.TicTacToeCommand;
+import org.fotum.app.commands.tictactoe.buttons.BoardInteractionCommand;
+import org.fotum.app.commands.tictactoe.buttons.BoardSurrenderCommand;
+import org.fotum.app.commands.tictactoe.buttons.PendingAcceptCommand;
+import org.fotum.app.commands.tictactoe.buttons.PendingDeclineCommand;
 import org.fotum.app.interfaces.IButtonCommand;
 import org.fotum.app.interfaces.ISlashCommand;
 import org.fotum.app.interfaces.ITextCommand;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -37,35 +38,39 @@ public class CommandManager
 		this.addSlashCommand(new SetupCommand());
 		this.addSlashCommand(new AutoregCommand());
 		this.addSlashCommand(new UpdateSiegeSettingsCommand());
+		// Register BDO names commands
+		this.addSlashCommand(new RegUserCommand());
+		this.addSlashCommand(new RemUserCommand());
 
 		// Managing commands to force add/remove players from list
 		this.addSlashCommand(new ForceAddPlayersCommand());
 		this.addSlashCommand(new ForceRemPlayersCommand());
+		// Managing BDO names commands
+		this.addSlashCommand(new ForceRegUserCommand());
+		this.addSlashCommand(new ForceRemUserCommand());
 
 		// General purpose commands
 		// Moderation commands
 		this.addSlashCommand(new ClearCommand());
+		// TicTacToeGame
+		this.addSlashCommand(new TicTacToeCommand());
 		// Owner commands
 		this.addTextCommand(new EvalCommand());
-		this.addTextCommand(new ChangeActivityCommand());
 		this.addTextCommand(new ShutdownCommand());
+		this.addTextCommand(new ChangeActivityCommand());
 
 		// Button commands
 		this.addButtonCommand(new AddPlayerCommand());
 		this.addButtonCommand(new RemovePlayerCommand());
+
+		// TicTacToe button commands
+		this.addButtonCommand(new PendingAcceptCommand());
+		this.addButtonCommand(new PendingDeclineCommand());
+		this.addButtonCommand(new BoardInteractionCommand());
+		this.addButtonCommand(new BoardSurrenderCommand());
 	}
 	
-	public Collection<ITextCommand> getTextCommands()
-	{
-		return this.textCommands.values();
-	}
-	
-	public ITextCommand getCommand(String name)
-	{
-		return this.textCommands.get(name);
-	}
-	
-	void handleTextCommand(MessageReceivedEvent event)
+	void handleTextCommand(@NotNull MessageReceivedEvent event)
 	{
 		User author = event.getAuthor();
 		String content = event.getMessage().getContentRaw();
@@ -79,7 +84,7 @@ public class CommandManager
 			if (Objects.nonNull(cmd))
 			{
 				ChannelType channelType = event.getChannelType();
-				if (channelType != ChannelType.PRIVATE && !cmd.canBePrivate())
+				if (channelType == ChannelType.PRIVATE && !cmd.canBePrivate())
 					return;
 
 				final List<String> args = new ArrayList<>(Arrays.asList(split).subList(1, split.length));
@@ -88,21 +93,25 @@ public class CommandManager
 		}
 	}
 	
-	void handleButtonCommand(ButtonInteractionEvent event)
+	void handleButtonCommand(@NotNull ButtonInteractionEvent event)
 	{
+		event.deferEdit().queue();
+
 		String componentId = event.getComponentId();
 		if (this.buttonCommands.containsKey(componentId))
 			this.buttonCommands.get(componentId).handle(event);
+		else if (componentId.startsWith("tictactoe-board-"))
+			this.buttonCommands.get("tictactoe-board-").handle(event);
 	}
 
-	void handleSlashCommand(SlashCommandInteractionEvent event)
+	void handleSlashCommand(@NotNull SlashCommandInteractionEvent event)
 	{
 		String commandNm = event.getName();
 		if (this.slashCommands.containsKey(commandNm))
 			this.slashCommands.get(commandNm).handle(event);
 	}
 
-	private void addTextCommand(ITextCommand command)
+	private void addTextCommand(@NotNull ITextCommand command)
 	{
 		if (!this.textCommands.containsKey(command.getInvoke()))
 		{
@@ -110,7 +119,7 @@ public class CommandManager
 		}
 	}
 
-	private void addButtonCommand(IButtonCommand command)
+	private void addButtonCommand(@NotNull IButtonCommand command)
 	{
 		if (!this.buttonCommands.containsKey(command.getCommandId()))
 		{
@@ -118,7 +127,7 @@ public class CommandManager
 		}
 	}
 
-	private void addSlashCommand(ISlashCommand command)
+	private void addSlashCommand(@NotNull ISlashCommand command)
 	{
 		if (!this.slashCommands.containsKey(command.getInvoke()))
 		{

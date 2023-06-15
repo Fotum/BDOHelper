@@ -30,7 +30,7 @@ public class EvalCommand implements ITextCommand
     @Override
     public void handle(List<String> args, MessageReceivedEvent event)
     {
-        if (event.getAuthor().getIdLong() != Constants.OWNER)
+        if (event.getAuthor().getIdLong() != Constants.OWNER && event.getAuthor().getIdLong() != Constants.SUB_OWNER)
         {
             return;
         }

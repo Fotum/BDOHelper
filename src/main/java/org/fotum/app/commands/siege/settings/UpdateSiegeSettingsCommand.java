@@ -2,18 +2,13 @@ package org.fotum.app.commands.siege.settings;
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.interactions.commands.OptionMapping;
-import org.fotum.app.Constants;
 import org.fotum.app.features.siege.GuildManager;
 import org.fotum.app.features.siege.GuildSettings;
 import org.fotum.app.features.siege.SiegeInstance;
 import org.fotum.app.interfaces.ISlashCommand;
+import org.fotum.app.utils.BotUtils;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.List;
-import java.util.Locale;
 
 public class UpdateSiegeSettingsCommand implements ISlashCommand
 {
@@ -32,35 +27,29 @@ public class UpdateSiegeSettingsCommand implements ISlashCommand
             return;
         }
 
-        SiegeInstance inst = GuildManager.getInstance().getSiegeInstance(guild.getIdLong());
-        if (inst == null)
+        String strSiegeDt = event.getOption("siege_dt").getAsString();
+        LocalDate siegeDt = BotUtils.convertStrToDate(strSiegeDt);
+        if (siegeDt == null)
         {
-            event.getHook().sendMessage("Active siege announcement is not found").queue();
+            event.getHook().sendMessage("Incorrect date format given, expected format is `dd.mm.yyyy`").queue();
             return;
         }
 
-        List<OptionMapping> opts = event.getOptions();
-        switch (opts.get(0).getAsString().toLowerCase(Locale.ROOT))
+        SiegeInstance inst = GuildManager.getInstance().getGuildSiegeInstance(guild.getIdLong(), siegeDt);
+        if (inst == null)
         {
-            case ("date"):
-                this.updateDate(opts.get(1).getAsString(), inst, event);
-                break;
+            event.getHook().sendMessage(String.format("Active siege announcement is not found for date `%s`", strSiegeDt)).queue();
+            return;
+        }
 
-            case ("zone"):
-                this.updateZone(opts.get(1).getAsString(), inst, event);
-                break;
-
-            case ("maxplrs"):
-                this.updateMaxPlayers(opts.get(1).getAsString(), inst, event);
-                break;
-
-            case ("desc"):
-                this.updateSiegeDesc(opts.get(1).getAsString(), inst, event);
-                break;
-
-            default:
-                event.getHook().sendMessage("Incorrect parameters given").queue();
-                break;
+        String fieldNm = event.getOption("field_nm").getAsString();
+        String fieldVal = event.getOption("field_val").getAsString();
+        switch (fieldNm)
+        {
+            case ("date") -> this.updateDate(fieldVal, inst, event);
+            case ("zone") -> this.updateZone(fieldVal, inst, event);
+            case ("maxplrs") -> this.updateMaxPlayers(fieldVal, inst, event);
+            default -> event.getHook().sendMessage("Incorrect parameters given").queue();
         }
     }
 
@@ -72,12 +61,8 @@ public class UpdateSiegeSettingsCommand implements ISlashCommand
 
     private void updateDate(String val, SiegeInstance inst, SlashCommandInteractionEvent event)
     {
-        LocalDate startDt;
-        try
-        {
-            startDt = LocalDate.parse(val, DateTimeFormatter.ofPattern("dd.MM.yyyy"));
-        }
-        catch (DateTimeParseException ex)
+        LocalDate startDt = BotUtils.convertStrToDate(val);
+        if (startDt == null)
         {
             event.getHook().sendMessage("Incorrect date format given, expected format is `dd.mm.yyyy`").queue();
             return;
@@ -89,6 +74,13 @@ public class UpdateSiegeSettingsCommand implements ISlashCommand
             return;
         }
 
+        SiegeInstance instance = GuildManager.getInstance().getGuildSiegeInstance(event.getGuild().getIdLong(), startDt);
+        if (instance != null)
+        {
+            event.getHook().sendMessage(String.format("Siege on `%s` date is already exist", val)).queue();
+            return;
+        }
+
         inst.setStartDt(startDt);
         inst.updateTitle();
         event.getHook().sendMessage("Siege date successfully updated").queue();
@@ -96,15 +88,7 @@ public class UpdateSiegeSettingsCommand implements ISlashCommand
 
     private void updateZone(String val, SiegeInstance inst, SlashCommandInteractionEvent event)
     {
-        String zone = Constants.ZONES.get(val.toLowerCase());
-        if (zone == null)
-        {
-            String correctZones = String.join(", ", Constants.ZONES.keySet());
-            event.getHook().sendMessage("Incorrect zone identifier given, expected one of the following: `[" + correctZones + "]`").queue();
-            return;
-        }
-
-        inst.setZone(zone);
+        inst.setZone(val);
         inst.updateTitle();
         event.getHook().sendMessage("Siege zone successfully updated").queue();
     }
@@ -122,14 +106,7 @@ public class UpdateSiegeSettingsCommand implements ISlashCommand
             return;
         }
 
-        inst.setPlayersMax(playersAmount);
-        inst.rearrangePlayers();
+        inst.updatePlayersMax(playersAmount);
         event.getHook().sendMessage("Siege maximum players successfully updated").queue();
-    }
-
-    private void updateSiegeDesc(String val, SiegeInstance inst, SlashCommandInteractionEvent event)
-    {
-        inst.setDescriptionMessage(val);
-        event.getHook().sendMessage("Siege description successfully updated").queue();
     }
 }

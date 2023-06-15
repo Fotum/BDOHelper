@@ -2,13 +2,13 @@ package org.fotum.app.commands.siege;
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.fotum.app.features.siege.GuildManager;
 import org.fotum.app.features.siege.GuildSettings;
 import org.fotum.app.features.siege.SiegeInstance;
 import org.fotum.app.interfaces.ISlashCommand;
+import org.fotum.app.utils.BotUtils;
 
-import java.util.List;
+import java.time.LocalDate;
 
 public class ForceAddPlayersCommand implements ISlashCommand
 {
@@ -27,16 +27,23 @@ public class ForceAddPlayersCommand implements ISlashCommand
 			return;
 		}
 
-		SiegeInstance siegeInst = GuildManager.getInstance().getSiegeInstance(guild.getIdLong());
-		if (siegeInst == null)
+		String strSiegeDt = event.getOption("siege_dt").getAsString();
+		LocalDate siegeDt = BotUtils.convertStrToDate(strSiegeDt);
+		if (siegeDt == null)
 		{
-			event.getHook().sendMessage("Active siege is not found for current guild").queue();
+			event.getHook().sendMessage("Incorrect date format given, expected format is `dd.mm.yyyy`").queue();
 			return;
 		}
 
-		List<OptionMapping> opts = event.getOptions();
-		opts.get(0).getMentions().getMembers().forEach(
-				(member) -> siegeInst.addPlayer(member.getIdLong())
+		SiegeInstance siegeInst = GuildManager.getInstance().getGuildSiegeInstance(guild.getIdLong(), siegeDt);
+		if (siegeInst == null)
+		{
+			event.getHook().sendMessage(String.format("Active siege announcement is not found for date `%s`", strSiegeDt)).queue();
+			return;
+		}
+
+		event.getOption("players").getMentions().getMembers().forEach(
+				(member) -> siegeInst.registerPlayer(member.getIdLong())
 		);
 
 		event.getHook().sendMessage("Player(s) successfully added").queue();
