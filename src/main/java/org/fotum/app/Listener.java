@@ -106,7 +106,4 @@ class Listener extends ListenerAdapter
 		if (event.isFromGuild())
 			this.manager.handleButtonCommand(event);
 	}
-
-
-	}
 }
