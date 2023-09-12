@@ -67,6 +67,7 @@ class Listener extends ListenerAdapter
 		// If event came from private text channel - log author and message
 		else if (event.isFromType(ChannelType.PRIVATE)
 				&& author.getIdLong() != Constants.OWNER
+				&& author.getIdLong() != Constants.SUB_OWNER
 				&& !author.isBot())
 		{
 			log.info(String.format("[PRIV] <%#s>: %s%s", author, content, attachments));
