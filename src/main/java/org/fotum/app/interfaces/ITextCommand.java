@@ -4,18 +4,16 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 
-public interface ITextCommand
-{
-	void handle(List<String> args, MessageReceivedEvent event);
-	
-	String getHelp();
-	
-	String getInvoke();
+public interface ITextCommand {
+    void handle(List<String> args, MessageReceivedEvent event);
 
-	boolean isVisible();
+    String getHelp();
 
-	default boolean canBePrivate()
-	{
-		return false;
-	}
+    String getInvoke();
+
+    boolean isVisible();
+
+    default boolean canBePrivate() {
+        return false;
+    }
 }

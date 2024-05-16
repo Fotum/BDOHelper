@@ -1,45 +1,47 @@
 package org.fotum.app.commands.tictactoe.buttons;
 
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
-import org.fotum.app.features.siege.GuildManager;
-import org.fotum.app.features.tictactoe.TicTacToeGame;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
+import org.fotum.app.guild.GuildManager;
+import org.fotum.app.handlers.DiscordObjectsOperations;
 import org.fotum.app.interfaces.IButtonCommand;
+import org.fotum.app.modules.tictactoe.TicTacToeGame;
+import org.fotum.app.modules.tictactoe.TicTacToeState;
 
-import java.util.Objects;
 import java.util.function.Predicate;
 
-public class PendingAcceptCommand implements IButtonCommand
-{
+public class PendingAcceptCommand implements IButtonCommand {
     @Override
-    public void handle(ButtonInteractionEvent event)
-    {
+    public void handle(ButtonInteractionEvent event) {
+        long guildId = event.getGuild().getIdLong();
         long msgId = event.getMessageIdLong();
         long memberId = event.getMember().getIdLong();
 
         Predicate<TicTacToeGame> searchCondition = (game) ->
                 game.getGameRequestMsgId() == msgId
-                && game.getUserTwoId() == memberId
-                && game.getState() == 0
-        ;
+                && game.getSecondPlayerId() == memberId
+                && game.getState() == TicTacToeState.PENDING;
 
-        // Get game instance that is in current guild and assigned to current request message
-        TicTacToeGame gameInstance = GuildManager.getInstance()
+        TicTacToeGame gameInstance = GuildManager.getInstance().getGuildHandler(guildId)
                 .getTicTacToeGames()
                 .stream()
                 .filter(searchCondition)
                 .findFirst()
                 .orElse(null);
 
-        if (Objects.isNull(gameInstance))
+        if (gameInstance == null)
             return;
 
-        // Here second member accepts
-        gameInstance.startAcceptedGame();
+        long channelId = event.getMessageChannel().getIdLong();
+        DiscordObjectsOperations.deleteMessageById(channelId, msgId);
+
+        gameInstance.initializeGame();
+        MessageCreateData msgData = gameInstance.getBoardRepresentation();
+        event.getMessageChannel().sendMessage(msgData).queue((msg) -> gameInstance.setGameMsgId(msg.getIdLong()));
     }
 
     @Override
-    public String getCommandId()
-    {
+    public String getCommandId() {
         return "tictactoe-pend-accept";
     }
 }

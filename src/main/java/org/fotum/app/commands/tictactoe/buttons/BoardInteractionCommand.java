@@ -1,46 +1,54 @@
 package org.fotum.app.commands.tictactoe.buttons;
 
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
-import org.fotum.app.features.siege.GuildManager;
-import org.fotum.app.features.tictactoe.TicTacToeGame;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
+import net.dv8tion.jda.api.utils.messages.MessageEditData;
+import org.fotum.app.guild.GuildHandler;
+import org.fotum.app.guild.GuildManager;
 import org.fotum.app.interfaces.IButtonCommand;
+import org.fotum.app.modules.tictactoe.TicTacToeGame;
+import org.fotum.app.modules.tictactoe.TicTacToeState;
 
-import java.util.Objects;
 import java.util.function.Predicate;
 
-public class BoardInteractionCommand implements IButtonCommand
-{
+public class BoardInteractionCommand implements IButtonCommand {
     @Override
-    public void handle(ButtonInteractionEvent event)
-    {
+    public void handle(ButtonInteractionEvent event) {
+        long guildId = event.getGuild().getIdLong();
         long msgId = event.getMessageIdLong();
         long memberId = event.getMember().getIdLong();
 
         Predicate<TicTacToeGame> searchCondition = (game) ->
-                game.getGameMessageId() == msgId
+                game.getGameMsgId() == msgId
                 && game.getTurnHolderId() == memberId
-                && game.getState() == 1
-        ;
+                && game.getState() == TicTacToeState.ACTIVE;
 
-        // Get game instance that is in current guild and assigned to current request message
-        TicTacToeGame gameInstance = GuildManager.getInstance()
+        GuildHandler handler = GuildManager.getInstance().getGuildHandler(guildId);
+        TicTacToeGame gameInstance = handler
                 .getTicTacToeGames()
                 .stream()
                 .filter(searchCondition)
                 .findFirst()
                 .orElse(null);
 
-        if (Objects.isNull(gameInstance))
+        if (gameInstance == null)
             return;
 
         String componentId = event.getComponentId().replace(this.getCommandId(), "");
         int boardPosition = Integer.parseInt(componentId);
-        gameInstance.makeTurn(boardPosition);
+        gameInstance.processTurn(boardPosition);
+
+        if (gameInstance.getState() != TicTacToeState.ACTIVE)
+            handler.getTicTacToeGames().remove(gameInstance);
+
+        MessageCreateData msgData = gameInstance.getBoardRepresentation();
+        Message message = event.getMessage();
+        message.editMessage(MessageEditData.fromCreateData(msgData)).queue();
     }
 
     @Override
-    public String getCommandId()
-    {
+    public String getCommandId() {
         return "tictactoe-board-";
     }
 }

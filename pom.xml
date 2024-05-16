@@ -5,8 +5,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.fotum</groupId>
-    <artifactId>BDOHelperEbaki</artifactId>
-    <version>1.0.1</version>
+    <artifactId>Siegemaker</artifactId>
+    <version>1.0.0</version>
+    <name>Siegemaker</name>
+    <description>Helper for BDO purposes</description>
 
     <properties>
         <maven.compiler.source>14</maven.compiler.source>
@@ -71,7 +73,7 @@
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
-            <version>5.0.0-beta.6</version>
+            <version>5.0.0-beta.21</version>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
@@ -87,13 +89,13 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.22</version>
+            <version>1.18.26</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy-all</artifactId>
-            <version>3.0.13</version>
+            <version>3.0.16</version>
             <type>pom</type>
         </dependency>
     </dependencies>
