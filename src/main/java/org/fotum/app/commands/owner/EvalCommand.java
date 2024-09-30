@@ -29,15 +29,8 @@ public class EvalCommand implements ITextCommand {
     }
 
     @Override
-<<<<<<< Updated upstream
-    public void handle(List<String> args, MessageReceivedEvent event)
-    {
-        if (event.getAuthor().getIdLong() != Constants.OWNER && event.getAuthor().getIdLong() != Constants.SUB_OWNER)
-        {
-=======
     public void handle(List<String> args, MessageReceivedEvent event) {
         if (event.getAuthor().getIdLong() != Constants.OWNER)
->>>>>>> Stashed changes
             return;
 
         if (args.isEmpty()) {

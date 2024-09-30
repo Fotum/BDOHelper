@@ -17,8 +17,10 @@ public class RemoveSiegeCommand implements ISlashCommand {
         event.deferReply(true).queue();
 
         long guildId = event.getGuild().getIdLong();
+        long channelId = event.getChannelIdLong();
+
         GuildHandler handler = GuildManager.getInstance().getGuildHandler(guildId);
-        if (handler.getSiegeInstances().isEmpty()) {
+        if (handler.getInstances().isEmpty()) {
             event.getHook().sendMessage("No siege instances found for this guild").queue();
             return;
         }
@@ -36,20 +38,21 @@ public class RemoveSiegeCommand implements ISlashCommand {
         }
 
         if (siegeDt != null) {
-            SiegeInstance toRemove = handler.getSiegeInstance(siegeDt);
+            SiegeInstance toRemove = handler.getSiegeInstance(channelId, siegeDt);
             if (toRemove == null) {
-                event.getHook().sendMessage(String.format("No siege for date '%s' found", siegeDt.format(Constants.DATE_FORMAT))).queue();
+                event.getHook().sendMessage(String.format("No siege for date '%s' found in this channel", siegeDt.format(Constants.DATE_FORMAT))).queue();
                 return;
             }
 
-            handler.removeSiegeInstance(toRemove);
+            handler.removeInstance(toRemove);
             event.getHook().sendMessage(String.format("Siege with date `%s` successfully deleted", siegeDtOpt.getAsString().trim())).queue();
         } else {
-            for (SiegeInstance toRemove : handler.getSiegeInstances()) {
-                handler.removeSiegeInstance(toRemove);
+            for (SiegeInstance toRemove : handler.getInstances()) {
+                if (toRemove.getChannelId() == channelId)
+                    handler.removeInstance(toRemove);
             }
 
-            event.getHook().sendMessage("All sieges successfully deleted").queue();
+            event.getHook().sendMessage("All sieges successfully deleted for this channel").queue();
         }
     }
 

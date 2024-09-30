@@ -15,21 +15,17 @@ public class GuildMemberInfo implements Comparable<GuildMemberInfo> {
     private int priority;
     @Getter @Setter
     private String bdoName;
-    @Getter @Setter
-    private BDOClass bdoClass;
 
     public GuildMemberInfo(long discordId) {
         this.discordId = discordId;
 
         this.priority = 999;
         this.bdoName = null;
-        this.bdoClass = null;
     }
 
     public GuildMemberInfo(JSONObject instance) {
         this.discordId = instance.getLong("discord_id");
         this.bdoName = instance.optString("ingame_name", null);
-        this.bdoClass = instance.has("bdo_class") ? BDOClass.valueOf(instance.getString("bdo_class")) : null;
         this.priority = instance.optInt("priority", 999);
     }
 
@@ -37,7 +33,6 @@ public class GuildMemberInfo implements Comparable<GuildMemberInfo> {
         JSONObject thisJson = new JSONObject();
         thisJson.put("discord_id", this.discordId);
         thisJson.put("ingame_name", this.bdoName);
-        thisJson.put("bdo_class", this.bdoClass.toString());
         thisJson.put("priority", this.priority);
 
         return thisJson;

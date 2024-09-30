@@ -1,5 +1,4 @@
 {
 	"token_prod": "DISCORD_BOT_TOKEN_PROD",
 	"token_dev": "DISCORD_BOT_TOKEN_DEV",
-	"vk_service_key": "VK_SERVICE_KEY"
 }

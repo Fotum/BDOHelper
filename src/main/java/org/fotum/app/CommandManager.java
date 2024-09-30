@@ -5,12 +5,13 @@ import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import org.fotum.app.commands.bdo.ForceRegUserCommand;
 import org.fotum.app.commands.bdo.ForceRemUserCommand;
 import org.fotum.app.commands.bdo.RegUserCommand;
 import org.fotum.app.commands.bdo.RemUserCommand;
-import org.fotum.app.commands.bdo.siege.buttons.AddSiegePlayerCommand;
-import org.fotum.app.commands.bdo.siege.buttons.RemoveSiegePlayerCommand;
+import org.fotum.app.commands.bdo.buttons.AddPlayerCommand;
+import org.fotum.app.commands.bdo.buttons.RemovePlayerCommand;
 import org.fotum.app.commands.bdo.siege.control.*;
 import org.fotum.app.commands.bdo.siege.settings.AutoregCommand;
 import org.fotum.app.commands.bdo.siege.settings.SetupCommand;
@@ -61,12 +62,10 @@ public class CommandManager {
         this.addSlashCommand(new RemoveSiegeCommand());
         this.addSlashCommand(new AutoregCommand());
         this.addSlashCommand(new UpdateSiegeCommand());
+        this.addSlashCommand(new ReplacePlayersCommand());
         // Managing commands to force add/remove players from list
         this.addSlashCommand(new ForceAddPlayersCommand());
         this.addSlashCommand(new ForceRemPlayersCommand());
-        // Buttons
-        this.addButtonCommand(new AddSiegePlayerCommand());
-        this.addButtonCommand(new RemoveSiegePlayerCommand());
         // Managing BDO names commands
         this.addSlashCommand(new ForceRegUserCommand());
         this.addSlashCommand(new ForceRemUserCommand());
@@ -75,13 +74,9 @@ public class CommandManager {
         this.addSlashCommand(new RemUserCommand());
         this.addSlashCommand(new PriorityCommand());
 
-        // --- LEAGUE SECTION --- \\
-        // League managing command
-//        this.addSlashCommand(new AddLeagueCommand());
-//        this.addSlashCommand(new RemoveLeagueCommand());
-//        // Buttons
-//        this.addButtonCommand(new AddLeaguePlayerCommand());
-//        this.addButtonCommand(new RemoveLeaguePlayerCommand());
+        // Buttons
+        this.addButtonCommand(new AddPlayerCommand());
+        this.addButtonCommand(new RemovePlayerCommand());
     }
 
     void handleTextCommand(@NotNull MessageReceivedEvent event) {
@@ -118,6 +113,10 @@ public class CommandManager {
         String commandNm = event.getName();
         if (this.slashCommands.containsKey(commandNm))
             this.slashCommands.get(commandNm).handle(event);
+    }
+
+    void handleMessageReaction(@NotNull GenericMessageReactionEvent event) {
+
     }
 
     private void addTextCommand(@NotNull ITextCommand command) {

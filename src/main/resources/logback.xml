@@ -9,12 +9,12 @@
     </appender>
 
 	<appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${user.dir}\logs\BDOHelper.log</file>
+		<file>${app_root}/logs/BDOHelper.log</file>
 		<append>true</append>
 		
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<!-- Daily rollover -->
-			<fileNamePattern>${user.dir}\logs\BDOHelper.%d{yyyy-MM-dd}.log</fileNamePattern>
+			<fileNamePattern>${app_root}/logs/BDOHelper.%d{yyyy-MM-dd}.log</fileNamePattern>
 			
 			<!-- Keep 7 days' worth of history -->
 			<maxHistory>7</maxHistory>

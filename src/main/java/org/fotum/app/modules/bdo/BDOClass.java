@@ -27,7 +27,10 @@ public enum BDOClass {
     SAGE("Мудрец"),
     CORSAIR("Корсар"),
     DRAKANIA("Дракания"),
-    SCHOLARIA("Сколярия");
+    SCHOLARIA("Сколярия"),
+    MAEGU("Мэгу"),
+    WOOSA("Уса"),
+    OTHER("Другой класс");
 
     @Getter
     private final String label;

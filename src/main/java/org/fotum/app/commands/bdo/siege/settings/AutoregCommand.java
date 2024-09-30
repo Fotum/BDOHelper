@@ -27,21 +27,10 @@ public class AutoregCommand implements ISlashCommand {
 
         String action = event.getOption("action").getAsString();
         switch (action) {
-            case ("add"):
-                this.addAutoregPlayers(settings, event);
-                break;
-
-            case ("rem"):
-                this.remAutoregPlayers(settings, event);
-                break;
-
-            case ("list"):
-                this.listAutoregPlayers(settings, event);
-                break;
-
-            default:
-                event.getHook().sendMessage("Undefined action, only add/rem/list actions allowed").queue();
-                break;
+            case ("add") -> this.addAutoregPlayers(settings, event);
+            case ("rem") -> this.remAutoregPlayers(settings, event);
+            case ("list") -> this.listAutoregPlayers(settings, event);
+            default -> event.getHook().sendMessage("Undefined action, only add/rem/list actions allowed").queue();
         }
     }
 

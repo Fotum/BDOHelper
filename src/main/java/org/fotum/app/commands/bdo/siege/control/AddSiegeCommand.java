@@ -19,14 +19,10 @@ public class AddSiegeCommand implements ISlashCommand {
         event.deferReply(true).queue();
 
         long guildId = event.getGuild().getIdLong();
+        long channelId = event.getChannelIdLong();
+
         GuildHandler handler = GuildManager.getInstance().getGuildHandler(guildId);
         SiegeSettings settings = handler.getSiegeSettings();
-
-        long listeningChannelId = settings.getListeningChannel();
-        if (listeningChannelId == 0L) {
-            event.getHook().sendMessage("Siege announcements channel is not configured").queue();
-            return;
-        }
 
         LocalDate startDt;
         try {
@@ -42,8 +38,8 @@ public class AddSiegeCommand implements ISlashCommand {
             return;
         }
 
-        if (handler.getSiegeInstance(startDt) != null) {
-            event.getHook().sendMessage(String.format("Siege for date '%s' is already exists", startDt.format(Constants.DATE_FORMAT))).queue();
+        if (handler.getSiegeInstance(channelId, startDt) != null) {
+            event.getHook().sendMessage(String.format("Siege announce for date '%s' is already exist in this channel", startDt.format(Constants.DATE_FORMAT))).queue();
             return;
         }
 
@@ -51,10 +47,10 @@ public class AddSiegeCommand implements ISlashCommand {
         int playersAmount = event.getOption("slots").getAsInt();
 
         // Creating new siege instance with given parameters
-        SiegeInstance siegeInst = new SiegeInstance(handler, startDt, zone, playersAmount);
+        SiegeInstance siegeInst = new SiegeInstance(handler, channelId, startDt, zone, playersAmount);
         // If autoreg settings exist for this guild - add players to registred list
         settings.getAutoregList().stream().map(GuildMemberInfo::getDiscordId).forEach(siegeInst::registerPlayer);
-        handler.addSiegeInstance(siegeInst);
+        handler.addInstance(siegeInst);
 
         event.getHook().sendMessage("Successfully complete").queue();
     }

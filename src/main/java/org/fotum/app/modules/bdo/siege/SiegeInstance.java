@@ -15,18 +15,28 @@ import org.fotum.app.modules.bdo.GuildMemberInfo;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class SiegeInstance {
+    @Getter
+    private final long channelId;
     private final GuildHandler handler;
     private final EmbedBuilder embedBuilder;
     private final Set<GuildMemberInfo> registeredPlayers;
-    private final Queue<GuildMemberInfo> latePlayers;
+    private final Set<GuildMemberInfo> latePlayers;
     private final Set<GuildMemberInfo> unregisteredPlayers;
+    @Getter
+    private final LocalDate siegeDt;
+    @Getter
+    private final LocalDateTime disableAtDttm;
+    @Getter
+    private final LocalDateTime unscheduleAtDttm;
 
     @Getter @Setter
     private volatile boolean needRedraw = true;
@@ -36,58 +46,64 @@ public class SiegeInstance {
     @Getter @Setter
     private boolean buttonsDisabled = false;
     @Getter @Setter
-    private long siegeAnnounceMsgId;
+    private long announceMsgId;
     @Getter @Setter
-    private long messageMentionId;
+    private long mentionMsgId;
 
     @Getter
     private int playersMax;
     private BDOChannel zone;
-    @Getter
-    private LocalDate siegeDt;
 
-    public SiegeInstance(GuildHandler handler, LocalDate siegeDt, BDOChannel zone, int playersMax) {
+    public SiegeInstance(GuildHandler handler, long channelId, LocalDate siegeDt, BDOChannel zone, int playersMax) {
         this.handler = handler;
+        this.channelId = channelId;
         this.siegeDt = siegeDt;
         this.zone = zone;
         this.playersMax = playersMax;
 
-        this.siegeAnnounceMsgId = 0L;
-        this.messageMentionId = 0L;
+        this.announceMsgId = 0L;
+        this.mentionMsgId = 0L;
 
-        String dayOfWeek = this.siegeDt.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.forLanguageTag("ru"));
+        DayOfWeek dayOfWeek = this.siegeDt.getDayOfWeek();
+        int disableHour = (dayOfWeek != DayOfWeek.SATURDAY) ? 20 : 19;
+
+        this.disableAtDttm = siegeDt.atTime(disableHour, 0, 0);
+        this.unscheduleAtDttm = siegeDt.atTime(disableHour + 1, 0, 0);
+
+        String dayOfWeekStr = dayOfWeek.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("ru"));
         String dateStr = this.siegeDt.format(Constants.DATE_FORMAT);
 
         this.embedBuilder = new EmbedBuilder().setColor(DiscordObjectsOperations.getRandomColor());
-        this.embedBuilder.setTitle(String.format("Осада %s (%s) на канале - %s 1", dateStr, dayOfWeek, this.zone.getLabel()));
+        this.embedBuilder.setTitle(String.format("Осада %s (%s) на канале - %s 1", dateStr, dayOfWeekStr, this.zone.getLabel()));
         this.embedBuilder.setDescription("Проверьте пвп морфы, инкрустацию, релики, забаф, бижу под свап и т.д.");
 
         this.registeredPlayers = new LinkedHashSet<>();
-        this.latePlayers = new PriorityQueue<>(Comparator.comparing(GuildMemberInfo::getPriority));
+        this.latePlayers = new LinkedHashSet<>();
         this.unregisteredPlayers = new LinkedHashSet<>();
     }
 
     public SiegeInstance(GuildHandler handler, JSONObject instance) {
         this(
             handler,
+            instance.getLong("channel_id"),
             LocalDate.parse(instance.getString("start_dt"), Constants.DATE_FORMAT),
             BDOChannel.valueOf(instance.getString("zone")),
             instance.getInt("players_max")
         );
 
-        JSONArray registeredPlayersJson = instance.getJSONArray("registered_players");
+        JSONArray registeredPlayersJson = instance.optJSONArray("registered_players", new JSONArray());
         for (int i = 0; i < registeredPlayersJson.length(); i++) {
             GuildMemberInfo player = this.handler.getSiegeSettings().getRegisteredMembers().get(registeredPlayersJson.getLong(i));
             this.registeredPlayers.add(player);
         }
 
-        JSONArray latePlayersJson = instance.getJSONArray("late_players");
+        JSONArray latePlayersJson = instance.optJSONArray("late_players", new JSONArray());
         for (int i = 0; i < latePlayersJson.length(); i++) {
             GuildMemberInfo player = this.handler.getSiegeSettings().getRegisteredMembers().get(latePlayersJson.getLong(i));
             this.latePlayers.add(player);
         }
 
-        JSONArray unregisteredPlayersJson = instance.getJSONArray("unregistered_players");
+        JSONArray unregisteredPlayersJson = instance.optJSONArray("unregistered_players", new JSONArray());
         for (int i = 0; i < unregisteredPlayersJson.length(); i++) {
             GuildMemberInfo player = this.handler.getSiegeSettings().getRegisteredMembers().get(unregisteredPlayersJson.getLong(i));
             this.unregisteredPlayers.add(player);
@@ -123,16 +139,20 @@ public class SiegeInstance {
         if (this.registeredPlayers.contains(player)) {
             // Remove player from reg list
             this.registeredPlayers.remove(player);
+
             // Find first late player if any
-            GuildMemberInfo late = this.latePlayers.stream()
-                    .findFirst()
-                    .orElse(null);
+            GuildMemberInfo chosen = null;
+            for (GuildMemberInfo current : this.latePlayers) {
+                if (chosen == null || current.getPriority() < chosen.getPriority()) {
+                    chosen = current;
+                }
+            }
 
-            if (late != null) {
-                this.latePlayers.remove(late);
-                this.registeredPlayers.add(late);
+            if (chosen != null) {
+                this.latePlayers.remove(chosen);
+                this.registeredPlayers.add(chosen);
 
-                User userToNotify = DiscordObjectsOperations.getUserById(late.getDiscordId());
+                User userToNotify = DiscordObjectsOperations.getUserById(chosen.getDiscordId());
                 DiscordObjectsOperations.sendDirectMessage(userToNotify, String.format("Для Вас появился слот на осаду и вы были перенесены в список участников.\r\n" +
                                 "Ждем Вас на осаде **%s (%s)**.",
                         this.siegeDt.format(Constants.DATE_FORMAT),
@@ -159,8 +179,9 @@ public class SiegeInstance {
             this.needRedraw = true;
     }
 
-    public synchronized void setSiegeDt(LocalDate newDate) {
-        this.siegeDt = newDate;
+    public synchronized void setZone(BDOChannel newZone) {
+        this.zone = newZone;
+
         String dayOfWeek = this.siegeDt.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.forLanguageTag("ru"));
         String dateStr = this.siegeDt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
 
@@ -170,9 +191,12 @@ public class SiegeInstance {
             this.needRedraw = true;
     }
 
-    public synchronized void setZone(BDOChannel newZone) {
-        this.zone = newZone;
-        this.setSiegeDt(this.siegeDt);
+    public synchronized Set<GuildMemberInfo> getRegisteredPlayers() {
+        return new HashSet<>(this.registeredPlayers);
+    }
+
+    public synchronized Set<GuildMemberInfo> getLatePlayers() {
+        return new HashSet<>(this.latePlayers);
     }
 
     public synchronized String generateMentionMessage() {
@@ -226,14 +250,23 @@ public class SiegeInstance {
     public JSONObject toJSON() {
         JSONObject instance = new JSONObject();
 
+        instance.put("channel_id", this.channelId);
         instance.put("start_dt", this.siegeDt.format(Constants.DATE_FORMAT));
         instance.put("zone", this.zone.toString());
         instance.put("players_max", this.playersMax);
-        instance.put("registered_players", this.registeredPlayers.stream().map(GuildMemberInfo::getDiscordId).collect(Collectors.toList()));
-        instance.put("late_players", this.latePlayers.stream().map(GuildMemberInfo::getDiscordId).collect(Collectors.toList()));
-        instance.put("unregistered_players", this.unregisteredPlayers.stream().map(GuildMemberInfo::getDiscordId).collect(Collectors.toList()));
+
+        if (!this.registeredPlayers.isEmpty())
+            instance.put("registered_players", this.registeredPlayers.stream().map(GuildMemberInfo::getDiscordId).collect(Collectors.toList()));
+        if (!this.latePlayers.isEmpty())
+            instance.put("late_players", this.latePlayers.stream().map(GuildMemberInfo::getDiscordId).collect(Collectors.toList()));
+        if (!this.unregisteredPlayers.isEmpty())
+            instance.put("unregistered_players", this.unregisteredPlayers.stream().map(GuildMemberInfo::getDiscordId).collect(Collectors.toList()));
 
         return instance;
+    }
+
+    public long getInstanceId() {
+        return this.siegeDt.atStartOfDay(Constants.ZONE_ID).toInstant().toEpochMilli();
     }
 
     @Override
@@ -245,7 +278,7 @@ public class SiegeInstance {
             return false;
 
         SiegeInstance otherInst = (SiegeInstance) other;
-        return otherInst.getSiegeDt().isEqual(this.siegeDt);
+        return this.getInstanceId() == otherInst.getInstanceId();
     }
 
     private void rearrangePlayers() {

@@ -11,12 +11,7 @@ import java.util.List;
 @Slf4j
 public class ShutdownCommand implements ITextCommand {
     @Override
-<<<<<<< Updated upstream
-    public void handle(List<String> args, MessageReceivedEvent event)
-    {
-=======
     public void handle(List<String> args, MessageReceivedEvent event) {
->>>>>>> Stashed changes
         if (event.getAuthor().getIdLong() != Constants.OWNER)
             return;
 

@@ -17,7 +17,6 @@ public class RemUserCommand implements ISlashCommand {
         long userId = event.getUser().getIdLong();
         GuildMemberInfo memberInfo = settings.getRegisteredMembers().computeIfAbsent(userId, GuildMemberInfo::new);
         memberInfo.setBdoName(null);
-        memberInfo.setBdoClass(null);
 
         event.getHook().sendMessage("Player's BDO info successfully removed").queue();
     }

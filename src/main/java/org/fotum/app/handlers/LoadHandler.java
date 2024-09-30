@@ -8,7 +8,6 @@ import org.fotum.app.MainApp;
 import org.fotum.app.guild.GuildHandler;
 import org.fotum.app.guild.GuildManager;
 import org.fotum.app.modules.bdo.BDOChannel;
-import org.fotum.app.modules.bdo.BDOClass;
 import org.fotum.app.modules.bdo.siege.SiegeInstance;
 
 @Slf4j
@@ -41,7 +40,6 @@ public class LoadHandler {
         log.info(String.format("Upserting slash commands for guild with ID %d", guild.getIdLong()));
 
         guild.upsertCommand("setup", "Sets up or updates siege settings for current guild")
-                .addOption(OptionType.CHANNEL, "channel", "Channel mention (#channel_name) for announcments", false)
                 .addOption(OptionType.STRING, "mention_roles", "Roles to mention on announcement (Optional)", false)
                 .addOption(OptionType.STRING, "ts3_link", "Teamspeak 3 server link (additional button under siege announce)", false)
                 .queue();
@@ -55,7 +53,6 @@ public class LoadHandler {
         guild.upsertCommand("updsiege", "Updates current siege instance")
                 .addOptions(
                         new OptionData(OptionType.STRING, "inst_dt", "Date of the siege to be updated in dd.mm.yyyy format", true),
-                        new OptionData(OptionType.STRING, "siege_date", "Siege date in dd.mm.yyyy format", false),
                         new OptionData(OptionType.INTEGER, "max_slots", "New value for maximum slots", false)
                                 .setRequiredRange(1, 200),
                         LoadHandler.getBdoChannelsOption(false))
@@ -67,6 +64,11 @@ public class LoadHandler {
         guild.upsertCommand("forcerem", "Manually removes mentioned users from players list")
                 .addOption(OptionType.STRING, "siege_dt", "Date of the siege to remove players in dd.mm.yyyy format", true)
                 .addOption(OptionType.STRING, "players", "Players to remove", true)
+                .queue();
+        guild.upsertCommand("replace", "Moves players from registered list to late list")
+                .addOption(OptionType.STRING, "siege_dt", "Date of the siege to replace players in dd.mm.yyyy format", true)
+                .addOption(OptionType.STRING, "players", "Players to replace", true)
+                .addOption(OptionType.STRING, "message", "Message to replaced members", false)
                 .queue();
         guild.upsertCommand("remsiege", "Removes currently scheduled siege")
                 .addOption(OptionType.STRING, "siege_dt", "Date of the siege to be removed in dd.mm.yyyy format (if not specified all sieges will be removed)", false)
@@ -80,9 +82,7 @@ public class LoadHandler {
                         new OptionData(OptionType.STRING, "members", "Member(s) to be added or deleted", false))
                 .queue();
         guild.upsertCommand("reguser", "Adds member's BDO info")
-                .addOptions(
-                        new OptionData(OptionType.STRING, "bdo_name", "Your BDO family name", true),
-                        LoadHandler.getBdoClassesOption())
+                .addOption(OptionType.STRING, "bdo_name", "Your BDO family name", true)
                 .queue();
         guild.upsertCommand("remuser", "Removes user's BDO info")
                 .queue();
@@ -90,7 +90,6 @@ public class LoadHandler {
                 .addOptions(
                         new OptionData(OptionType.USER, "discord_user", "Discord mention of player to map", true),
                         new OptionData(OptionType.STRING, "bdo_name", "BDO family name of player", true),
-                        LoadHandler.getBdoClassesOption(),
                         new OptionData(OptionType.INTEGER, "priority", "Player's slot priority", false)
                                 .setRequiredRange(1, 999))
                 .queue();
@@ -123,11 +122,10 @@ public class LoadHandler {
         GuildManager.getInstance().getGuilds().values().forEach(GuildHandler::stopDaemon);
         log.info("Removing siege instance messages");
         for (GuildHandler handler : GuildManager.getInstance().getGuilds().values()) {
-            long channelId = handler.getSiegeSettings().getListeningChannel();
-            for (SiegeInstance inst : handler.getSiegeInstances()) {
-                DiscordObjectsOperations.deleteMessageById(channelId, inst.getMessageMentionId());
-                DiscordObjectsOperations.deleteMessageById(channelId, inst.getSiegeAnnounceMsgId());
-            }
+            handler.getInstances().forEach((i) -> {
+                        DiscordObjectsOperations.deleteMessageById(i.getChannelId(), i.getMentionMsgId());
+                        DiscordObjectsOperations.deleteMessageById(i.getChannelId(), i.getAnnounceMsgId());
+                    });
         }
         log.info("Shutting down JDA");
         MainApp.getAPI().shutdown();
@@ -141,15 +139,6 @@ public class LoadHandler {
         OptionData result = new OptionData(OptionType.STRING, "game_channel", "One of predefined channel abbreviations", required);
         for (BDOChannel channel : BDOChannel.values()) {
             result.addChoice(channel.getLabel(), channel.toString());
-        }
-
-        return result;
-    }
-
-    private static OptionData getBdoClassesOption() {
-        OptionData result = new OptionData(OptionType.STRING, "bdo_class", "Your BDO class", false);
-        for (BDOClass bdoClass : BDOClass.values()) {
-            result.addChoice(bdoClass.getLabel(), bdoClass.toString());
         }
 
         return result;

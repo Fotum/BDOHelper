@@ -51,14 +51,11 @@ public class MainApp {
                 GatewayIntent.MESSAGE_CONTENT
         );
 
-        DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.create(config.getString("token_dev"), intents);
+        DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.create(config.getString("token_prod"), intents);
         builder.setActivity(Activity.watching("you not going to siege"))
                 .setStatus(OnlineStatus.ONLINE)
                 .addEventListeners(listener)
-                .disableCache(
-                        Arrays.stream(CacheFlag.values())
-                                .collect(Collectors.toList())
-                );
+                .disableCache(Arrays.asList(CacheFlag.values()));
 
         log.info("Finished booting");
         return builder.build();

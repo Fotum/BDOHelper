@@ -17,8 +17,9 @@ public class ForceRemPlayersCommand implements ISlashCommand {
         event.deferReply(true).queue();
 
         long guildId = event.getGuild().getIdLong();
+        long channelId = event.getChannelIdLong();
         GuildHandler handler = GuildManager.getInstance().getGuildHandler(guildId);
-        if (handler.getSiegeInstances().isEmpty()) {
+        if (handler.getInstances().isEmpty()) {
             event.getHook().sendMessage("No siege instances found for this guild").queue();
             return;
         }
@@ -32,9 +33,9 @@ public class ForceRemPlayersCommand implements ISlashCommand {
             return;
         }
 
-        SiegeInstance siegeInst = handler.getSiegeInstance(siegeDt);
+        SiegeInstance siegeInst = handler.getSiegeInstance(channelId, siegeDt);
         if (siegeInst == null) {
-            event.getHook().sendMessage(String.format("Active siege announcement is not found for date `%s`", strSiegeDt)).queue();
+            event.getHook().sendMessage(String.format("Active siege announcement is not found for date `%s` in this channel", strSiegeDt)).queue();
             return;
         }
 

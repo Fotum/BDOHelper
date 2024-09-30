@@ -18,8 +18,9 @@ public class UpdateSiegeCommand implements ISlashCommand {
         event.deferReply(true).queue();
 
         long guildId = event.getGuild().getIdLong();
+        long channelId = event.getChannelIdLong();
         GuildHandler handler = GuildManager.getInstance().getGuildHandler(guildId);
-        if (handler.getSiegeInstances().isEmpty()) {
+        if (handler.getInstances().isEmpty()) {
             event.getHook().sendMessage("No siege instances found for this guild").queue();
             return;
         }
@@ -33,41 +34,16 @@ public class UpdateSiegeCommand implements ISlashCommand {
             return;
         }
 
-        SiegeInstance inst = handler.getSiegeInstance(siegeDt);
+        SiegeInstance inst = handler.getSiegeInstance(channelId, siegeDt);
         if (inst == null) {
-            event.getHook().sendMessage(String.format("Active siege announcement is not found for date `%s`", strSiegeDt)).queue();
+            event.getHook().sendMessage(String.format("Active siege announcement is not found for date `%s` in this channel", strSiegeDt)).queue();
             return;
         }
 
-        OptionMapping newSiegeDtOpt = event.getOption("siege_date");
         OptionMapping newZoneOpt = event.getOption("game_channel");
         OptionMapping newMaxSlotsOpt = event.getOption("max_slots");
 
-        if (newSiegeDtOpt == null && newMaxSlotsOpt == null && newZoneOpt == null) {
-            event.getHook().sendMessage("No parameters for update given").queue();
-            return;
-        }
-
         StringBuilder resultBuilder = new StringBuilder();
-        if (newSiegeDtOpt != null) {
-            LocalDate newDate = this.parseDate(newSiegeDtOpt.getAsString());
-            resultBuilder.append("`siege_date`: ");
-
-            if (newDate == null) {
-                resultBuilder.append("Incorrect date format given, expected format is `dd.mm.yyyy`");
-            } else if (newDate.isBefore(LocalDate.now())) {
-                resultBuilder.append("Can only change siege date on a future date");
-            } else {
-                SiegeInstance checkInstance = handler.getSiegeInstance(newDate);
-                if (checkInstance != null) {
-                    resultBuilder.append(String.format("Siege on `%s` date is already exist", newDate.format(Constants.DATE_FORMAT)));
-                } else {
-                    inst.setSiegeDt(newDate);
-                    resultBuilder.append("Siege date successfully updated");
-                }
-            }
-        }
-
         if (newZoneOpt != null) {
             if (resultBuilder.length() != 0) {
                 resultBuilder.append("\r\n");
@@ -93,16 +69,5 @@ public class UpdateSiegeCommand implements ISlashCommand {
     @Override
     public String getInvoke() {
         return "updsiege";
-    }
-
-    private LocalDate parseDate(String val) {
-        LocalDate result;
-        try {
-            result = LocalDate.parse(val, Constants.DATE_FORMAT);
-        } catch (DateTimeParseException ex) {
-            return null;
-        }
-
-        return result;
     }
 }

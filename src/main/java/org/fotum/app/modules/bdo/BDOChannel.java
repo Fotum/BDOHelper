@@ -4,12 +4,17 @@ import lombok.Getter;
 
 public enum BDOChannel {
     BALENOS("Баленос"),
-    VALENCIA("Валенися"),
+    VALENCIA("Валенсия"),
     SERENDIA("Серендия"),
     CALPHEON("Кальфеон"),
     MEDIAH("Медия"),
     KAMASYLVIA("Камасильвия"),
-    UNKNOWN("Неизвестно");
+    UNKNOWN("Неизвестно"),
+
+    // Node wars double channels
+    BAL_SER("Баленос/Серендия"),
+    VAL_MED("Валенсия/Медия"),
+    CAL_KAM("Кальфеон/Камасильвия");
 
     @Getter
     private final String label;

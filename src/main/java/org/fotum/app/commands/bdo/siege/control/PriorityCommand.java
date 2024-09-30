@@ -23,21 +23,10 @@ public class PriorityCommand implements ISlashCommand {
         SiegeSettings settings = GuildManager.getInstance().getGuildHandler(guildId).getSiegeSettings();
         String action = event.getOption("action").getAsString();
         switch (action) {
-            case ("set"):
-                this.setPriority(settings, event);
-                break;
-
-            case ("reset"):
-                this.resetPriority(settings, event);
-                break;
-
-            case ("list"):
-                this.listPriorities(settings, event);
-                break;
-
-            default:
-                event.getHook().sendMessage("Undefined action, only set/reset/list actions allowed").queue();
-                break;
+            case ("set") -> this.setPriority(settings, event);
+            case ("reset") -> this.resetPriority(settings, event);
+            case ("list") -> this.listPriorities(settings, event);
+            default -> event.getHook().sendMessage("Undefined action, only set/reset/list actions allowed").queue();
         }
     }
 

@@ -9,12 +9,16 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.events.session.SessionDisconnectEvent;
 import net.dv8tion.jda.api.events.session.SessionRecreateEvent;
 import net.dv8tion.jda.api.events.session.SessionResumeEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.fotum.app.guild.GuildManager;
 import org.fotum.app.handlers.DiscordObjectsOperations;
 import org.fotum.app.handlers.LoadHandler;
 import org.jetbrains.annotations.NotNull;
@@ -47,30 +51,10 @@ public class Listener extends ListenerAdapter {
         MainApp.setApiConnected(true);
     }
 
-<<<<<<< Updated upstream
-			log.info(String.format("(%s) [%s] <%#s>: %s%s", guild.getName(), textChannel.getName(), author, content, attachments));
-		}
-		// If event came from private text channel - log author and message
-		else if (event.isFromType(ChannelType.PRIVATE)
-				&& author.getIdLong() != Constants.OWNER
-				&& !author.isBot())
-		{
-			log.info(String.format("[PRIV] <%#s>: %s%s", author, content, attachments));
-			// Forward message to owner
-			BotUtils.sendDirectMessage(
-					event.getJDA().getUserById(Constants.OWNER),
-					String.format("[FORWARD] <%#s>: %s%s", author, content, attachments)
-			);
-		}
-		// Handle command
-		this.manager.handleTextCommand(event);
-	}
-=======
     @Override
     public void onSessionRecreate(@NotNull SessionRecreateEvent event) {
         MainApp.setApiConnected(true);
     }
->>>>>>> Stashed changes
 
     @Override
     public void onGuildJoin(@NotNull GuildJoinEvent event) {
@@ -109,6 +93,16 @@ public class Listener extends ListenerAdapter {
     }
 
     @Override
+    public void onMessageDelete(@NotNull MessageDeleteEvent event) {
+        if (event.isFromGuild() && event.isFromType(ChannelType.TEXT)) {
+            long guildId = event.getGuild().getIdLong();
+            long msgId = event.getMessageIdLong();
+
+            GuildManager.getInstance().getGuildHandler(guildId).checkHandleInstanceDeletion(msgId);
+        }
+    }
+
+    @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
         if (event.isFromGuild()) {
             Guild guild = event.getGuild();
@@ -130,5 +124,25 @@ public class Listener extends ListenerAdapter {
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
         if (event.isFromGuild())
             this.manager.handleButtonCommand(event);
+    }
+
+    @Override
+    public void onGenericMessageReaction(@NotNull GenericMessageReactionEvent event) {
+        if (event.isFromGuild()) {
+            User author = event.getUser();
+            if (author == null)
+                return;
+
+            log.info(String.format("(%s) [%s] emoji was %s by <%#s> in channel '%s' on message with id '%d'",
+                    event.getGuild().getName(),
+                    event.getEmoji().getName(),
+                    event instanceof MessageReactionAddEvent ? "added" : "removed",
+                    author,
+                    event.getChannel().getName(),
+                    event.getMessageIdLong())
+            );
+
+            this.manager.handleMessageReaction(event);
+        }
     }
 }

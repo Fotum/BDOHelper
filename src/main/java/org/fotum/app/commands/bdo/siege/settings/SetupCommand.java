@@ -2,7 +2,6 @@ package org.fotum.app.commands.bdo.siege.settings;
 
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.fotum.app.guild.GuildManager;
@@ -24,18 +23,6 @@ public class SetupCommand implements ISlashCommand {
 
         long guildId = event.getGuild().getIdLong();
         SiegeSettings settings = GuildManager.getInstance().getGuildHandler(guildId).getSiegeSettings();
-        // Listening channel
-        OptionMapping channelOption = event.getOption("channel");
-        if (channelOption != null) {
-            ChannelType type = channelOption.getChannelType();
-            if (type != ChannelType.TEXT) {
-                event.getHook().sendMessage("Mentioned channel has to be of type TEXT").queue();
-                return;
-            }
-
-            long channelId = channelOption.getAsChannel().asTextChannel().getIdLong();
-            settings.setListeningChannel(channelId);
-        }
 
         // Mention roles
         OptionMapping mentionOption = event.getOption("mention_roles");
@@ -58,7 +45,7 @@ public class SetupCommand implements ISlashCommand {
         OptionMapping teamspeakOption = event.getOption("ts3_link");
         if (teamspeakOption != null) {
             String link = teamspeakOption.getAsString().trim();
-            settings.setTeamspeakLink(link);
+            settings.setTeamspeakLink("https://invite.teamspeak.com/" + link);
         }
 
         event.getHook().sendMessage("Successfully updated").queue();

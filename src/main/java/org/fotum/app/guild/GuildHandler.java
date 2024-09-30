@@ -1,8 +1,8 @@
 package org.fotum.app.guild;
 
 import lombok.Getter;
+import org.fotum.app.Constants;
 import org.fotum.app.modules.bdo.UpdaterDaemon;
-import org.fotum.app.modules.bdo.league.LeagueInstance;
 import org.fotum.app.modules.bdo.siege.SiegeInstance;
 import org.fotum.app.modules.bdo.siege.SiegeSettings;
 import org.fotum.app.modules.tictactoe.TicTacToeGame;
@@ -10,7 +10,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -20,9 +19,7 @@ public class GuildHandler {
     @Getter
     private final SiegeSettings siegeSettings;
     @Getter
-    private final List<SiegeInstance> siegeInstances = new LinkedList<>();
-    @Getter
-    private final List<LeagueInstance> leagueInstances = new LinkedList<>();
+    private final List<SiegeInstance> instances = new LinkedList<>();
     @Getter
     private final List<TicTacToeGame> ticTacToeGames = new LinkedList<>();
 
@@ -35,54 +32,43 @@ public class GuildHandler {
 
     public GuildHandler(JSONObject guildObject) {
         this.guildId = guildObject.getLong("id");
-        this.siegeSettings = new SiegeSettings(guildObject.getJSONObject("siege_settings"));
+        this.siegeSettings = new SiegeSettings(guildObject.optJSONObject("siege_settings"));
 
-        JSONArray siegeInstancesJSON = guildObject.getJSONArray("siege_instances");
-        for (int i = 0; i < siegeInstancesJSON.length(); i++) {
-            SiegeInstance instance = new SiegeInstance(this, siegeInstancesJSON.getJSONObject(i));
-            this.siegeInstances.add(instance);
+        JSONArray instancesJSON = guildObject.optJSONArray("instances", new JSONArray());
+        for (int i = 0; i < instancesJSON.length(); i++) {
+            JSONObject instObject = instancesJSON.getJSONObject(i);
+            SiegeInstance instance = new SiegeInstance(this, instObject);
+
+            this.instances.add(instance);
         }
 
-        JSONArray leagueInstancesJSON = guildObject.getJSONArray("league_instances");
-        for (int i = 0; i < leagueInstancesJSON.length(); i++) {
-            LeagueInstance instance = new LeagueInstance(this, leagueInstancesJSON.getJSONObject(i));
-            this.leagueInstances.add(instance);
-        }
-
-        if (this.siegeInstances.size() > 0)
+        if (this.instances.size() > 0)
             this.restartDaemon();
     }
 
-    public void addSiegeInstance(SiegeInstance inst) {
-        this.siegeInstances.add(inst);
+    public void addInstance(SiegeInstance inst) {
+        this.instances.add(inst);
         this.restartDaemon();
     }
 
-    public SiegeInstance getSiegeInstance(LocalDate siegeDt) {
-        return this.siegeInstances.stream()
-                .filter((i) -> i.getSiegeDt().isEqual(siegeDt))
+    public SiegeInstance getSiegeInstance(long channelId, LocalDate siegeDt) {
+        long siegeId = siegeDt.atStartOfDay(Constants.ZONE_ID).toInstant().toEpochMilli();
+
+        return this.instances.stream()
+                .filter((i) -> i.getChannelId() == channelId && i.getInstanceId() == siegeId)
                 .findFirst()
                 .orElse(null);
     }
 
-    public void removeSiegeInstance(SiegeInstance inst) {
-        this.updaterDaemon.pushRemoveSiegeInstance(inst);
+    public void removeInstance(SiegeInstance instance) {
+        this.updaterDaemon.pushRemoveInstance(instance);
     }
 
-    public void addLeagueInstance(LeagueInstance inst) {
-        this.leagueInstances.add(inst);
-        this.restartDaemon();
-    }
-
-    public LeagueInstance getLeagueInstance(LocalDateTime startDttm) {
-        return this.leagueInstances.stream()
-                .filter((i) -> i.getStartDttm().isEqual(startDttm))
+    public void checkHandleInstanceDeletion(long msgId) {
+        this.instances.stream()
+                .filter((i) -> i.getAnnounceMsgId() == msgId)
                 .findFirst()
-                .orElse(null);
-    }
-
-    public void removeLeagueInstance(LeagueInstance inst) {
-        this.updaterDaemon.pushRemoveLeagueInstance(inst);
+                .ifPresent((i) -> i.setNeedRedraw(true));
     }
 
     public void stopDaemon() {
@@ -92,21 +78,15 @@ public class GuildHandler {
 
     public JSONObject toJSON() {
         JSONObject settings = new JSONObject();
-
-        JSONArray siegeInstancesJSON = new JSONArray();
-        for (SiegeInstance instance : this.siegeInstances) {
-            siegeInstancesJSON.put(instance.toJSON());
-        }
-
-        JSONArray leagueInstancesJSON = new JSONArray();
-        for (LeagueInstance instance : this.leagueInstances) {
-            leagueInstancesJSON.put(instance.toJSON());
-        }
-
         settings.put("id", this.guildId);
-        settings.put("siege_settings", this.siegeSettings.toJSON());
-        settings.put("siege_instances", siegeInstancesJSON);
-        settings.put("league_instances", leagueInstancesJSON);
+        settings.putOpt("siege_settings", this.siegeSettings.toJSON());
+
+        JSONArray instancesJSON = new JSONArray();
+        for (SiegeInstance instance : this.instances) {
+            instancesJSON.put(instance.toJSON());
+        }
+
+        settings.putOpt("instances", instancesJSON.isEmpty() ? null : instancesJSON);
 
         return settings;
     }

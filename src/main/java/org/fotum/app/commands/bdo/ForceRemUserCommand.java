@@ -17,7 +17,6 @@ public class ForceRemUserCommand implements ISlashCommand {
         long toRemove = event.getOption("discord_user").getAsUser().getIdLong();
         GuildMemberInfo memberInfo = settings.getRegisteredMembers().computeIfAbsent(toRemove, GuildMemberInfo::new);
         memberInfo.setBdoName(null);
-        memberInfo.setBdoClass(null);
 
         event.getHook().sendMessage("Player's BDO info successfully removed").queue();
     }
