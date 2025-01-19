@@ -24,9 +24,9 @@ import org.fotum.app.commands.tictactoe.buttons.BoardInteractionCommand;
 import org.fotum.app.commands.tictactoe.buttons.BoardSurrenderCommand;
 import org.fotum.app.commands.tictactoe.buttons.PendingAcceptCommand;
 import org.fotum.app.commands.tictactoe.buttons.PendingDeclineCommand;
-import org.fotum.app.interfaces.IButtonCommand;
-import org.fotum.app.interfaces.ISlashCommand;
-import org.fotum.app.interfaces.ITextCommand;
+import org.fotum.app.commands.interfaces.IButtonCommand;
+import org.fotum.app.commands.interfaces.ISlashCommand;
+import org.fotum.app.commands.interfaces.ITextCommand;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;

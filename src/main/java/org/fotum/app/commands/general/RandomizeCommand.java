@@ -6,7 +6,7 @@ import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import org.fotum.app.handlers.DiscordObjectsOperations;
-import org.fotum.app.interfaces.ISlashCommand;
+import org.fotum.app.commands.interfaces.ISlashCommand;
 
 import java.util.ArrayList;
 import java.util.Collections;

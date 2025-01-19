@@ -1,4 +1,4 @@
-package org.fotum.app.interfaces;
+package org.fotum.app.commands.interfaces;
 
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 

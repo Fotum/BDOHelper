@@ -4,7 +4,7 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import org.fotum.app.guild.GuildHandler;
 import org.fotum.app.guild.GuildManager;
 import org.fotum.app.handlers.DiscordObjectsOperations;
-import org.fotum.app.interfaces.IButtonCommand;
+import org.fotum.app.commands.interfaces.IButtonCommand;
 import org.fotum.app.modules.tictactoe.TicTacToeGame;
 import org.fotum.app.modules.tictactoe.TicTacToeState;
 

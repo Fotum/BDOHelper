@@ -7,7 +7,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import org.fotum.app.Constants;
 import org.fotum.app.guild.GuildManager;
-import org.fotum.app.interfaces.IButtonCommand;
+import org.fotum.app.commands.interfaces.IButtonCommand;
 import org.fotum.app.modules.bdo.siege.SiegeInstance;
 
 @Slf4j

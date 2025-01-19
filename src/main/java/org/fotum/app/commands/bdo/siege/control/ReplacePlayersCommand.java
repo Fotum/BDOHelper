@@ -8,7 +8,7 @@ import org.fotum.app.Constants;
 import org.fotum.app.guild.GuildHandler;
 import org.fotum.app.guild.GuildManager;
 import org.fotum.app.handlers.DiscordObjectsOperations;
-import org.fotum.app.interfaces.ISlashCommand;
+import org.fotum.app.commands.interfaces.ISlashCommand;
 import org.fotum.app.modules.bdo.GuildMemberInfo;
 import org.fotum.app.modules.bdo.siege.SiegeInstance;
 

@@ -5,7 +5,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import org.fotum.app.interfaces.ISlashCommand;
+import org.fotum.app.commands.interfaces.ISlashCommand;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;

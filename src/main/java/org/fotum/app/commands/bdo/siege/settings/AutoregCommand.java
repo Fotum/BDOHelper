@@ -8,7 +8,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.fotum.app.guild.GuildManager;
 import org.fotum.app.handlers.DiscordObjectsOperations;
-import org.fotum.app.interfaces.ISlashCommand;
+import org.fotum.app.commands.interfaces.ISlashCommand;
 import org.fotum.app.modules.bdo.GuildMemberInfo;
 import org.fotum.app.modules.bdo.siege.SiegeSettings;
 

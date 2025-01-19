@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.fotum.app.Constants;
 import org.fotum.app.handlers.LoadHandler;
-import org.fotum.app.interfaces.ITextCommand;
+import org.fotum.app.commands.interfaces.ITextCommand;
 
 import java.util.List;
 

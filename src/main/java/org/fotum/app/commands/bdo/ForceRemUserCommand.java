@@ -2,7 +2,7 @@ package org.fotum.app.commands.bdo;
 
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import org.fotum.app.guild.GuildManager;
-import org.fotum.app.interfaces.ISlashCommand;
+import org.fotum.app.commands.interfaces.ISlashCommand;
 import org.fotum.app.modules.bdo.GuildMemberInfo;
 import org.fotum.app.modules.bdo.siege.SiegeSettings;
 

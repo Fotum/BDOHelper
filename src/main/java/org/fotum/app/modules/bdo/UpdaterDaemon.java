@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 public class UpdaterDaemon extends Thread {
     private final GuildHandler handler;
     private final Set<SiegeInstance> removeList;
+    private final ZoneId localZone;
 
     @Getter
     private volatile boolean isRunning = false;
@@ -26,6 +27,7 @@ public class UpdaterDaemon extends Thread {
     public UpdaterDaemon(GuildHandler handler) {
         this.handler = handler;
         this.removeList = new HashSet<>();
+        this.localZone = ZoneId.of("Europe/Moscow");
 
         log.info(String.format("Instance updater daemon initialized for guild with id %d", handler.getGuildId()));
     }
@@ -43,7 +45,7 @@ public class UpdaterDaemon extends Thread {
 
             try {
                 // Getting date and time of now to determine when should we unschedule instances
-                LocalDateTime dttmNow = LocalDateTime.now(ZoneId.of("Europe/Moscow"));
+                LocalDateTime dttmNow = LocalDateTime.now(this.localZone);
                 Iterator<SiegeInstance> instancesIterator = instances.iterator();
                 while (instancesIterator.hasNext()) {
                     SiegeInstance instance = instancesIterator.next();
@@ -74,6 +76,8 @@ public class UpdaterDaemon extends Thread {
                         this.updateSiegeInstance(instance, needMention, needRedraw, disableButtons);
                     }
                 }
+
+                TimeUnit.SECONDS.sleep(1L);
             } catch (InterruptedException ex) {
                 this.stopUpdater();
             } catch (Exception ex) {

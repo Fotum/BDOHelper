@@ -33,7 +33,8 @@ public class GuildMemberInfo implements Comparable<GuildMemberInfo> {
         JSONObject thisJson = new JSONObject();
         thisJson.put("discord_id", this.discordId);
         thisJson.put("ingame_name", this.bdoName);
-        thisJson.put("priority", this.priority);
+        if (this.priority != 999)
+            thisJson.put("priority", this.priority);
 
         return thisJson;
     }

@@ -6,7 +6,7 @@ import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
 import org.fotum.app.guild.GuildHandler;
 import org.fotum.app.guild.GuildManager;
-import org.fotum.app.interfaces.IButtonCommand;
+import org.fotum.app.commands.interfaces.IButtonCommand;
 import org.fotum.app.modules.tictactoe.TicTacToeGame;
 import org.fotum.app.modules.tictactoe.TicTacToeState;
 
